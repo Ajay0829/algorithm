@@ -43,7 +43,7 @@ public class MarketStructureService {
                 stock.getSymbol(), "1", "day", startDate, endDate
         );
         List<Candle> candles = response.getResults();
-        List<SwingPoint> swingPoints = swingPointService.detectSwingPoints(candles);
+        List<SwingPoint> swingPoints = swingPointService.getSwingPoints(candles);
         MarketTrend currentTrend = marketTrendService.getMarketTrend(swingPoints);
         List<BreakOfStructure> breakOfStructures = breakOfStructureService.getBreakOfStructures(swingPoints);
         List<LiquiditySweep> liquiditySweeps = liquiditySweepService.getLiquiditySweeps(swingPoints);

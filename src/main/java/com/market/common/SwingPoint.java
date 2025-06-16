@@ -30,4 +30,14 @@ public class SwingPoint {
     public boolean isLow() {
         return swingType == SwingType.LOW;
     }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("SwingPoint{");
+        sb.append("index=").append(index);
+        sb.append(", price=").append(price);
+        sb.append(", swingType=").append(swingType);
+        sb.append('}');
+        return sb.toString();
+    }
 }
