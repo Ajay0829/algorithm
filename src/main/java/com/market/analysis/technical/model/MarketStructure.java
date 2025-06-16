@@ -12,23 +12,20 @@ public class MarketStructure {
     private List<Candle> candles;
     private MarketTrend currentTrend;
     private List<SwingPoint> swingPoints;
-    private List<BreakOfStructure> breakOfStructures;
-    private List<LiquiditySweep> liquiditySweeps;
+    private List<MarketStructureEvent> marketStructureEvents;
 
     public MarketStructure(
             Stock stock,
             List<Candle> candles,
             MarketTrend currentTrend,
             List<SwingPoint> swingPoints,
-            List<BreakOfStructure> breakOfStructures,
-            List<LiquiditySweep> liquiditySweeps
+            List<MarketStructureEvent> marketStructureEvents
     ) {
         this.stock = stock;
         this.candles = candles;
         this.currentTrend = currentTrend;
         this.swingPoints = swingPoints;
-        this.breakOfStructures = breakOfStructures;
-        this.liquiditySweeps = liquiditySweeps;
+        this.marketStructureEvents = marketStructureEvents;
     }
 
     public Stock getStock() {
@@ -47,12 +44,8 @@ public class MarketStructure {
         return swingPoints;
     }
 
-    public List<BreakOfStructure> getBreakOfStructures() {
-        return breakOfStructures;
-    }
-
-    public List<LiquiditySweep> getLiquiditySweeps() {
-        return liquiditySweeps;
+    public List<MarketStructureEvent> getMarketStructureEvents() {
+        return marketStructureEvents;
     }
 
     public void setStock(Stock stock) {
@@ -71,23 +64,19 @@ public class MarketStructure {
         this.swingPoints = swingPoints;
     }
 
-    public void setBreakOfStructures(List<BreakOfStructure> breakOfStructures) {
-        this.breakOfStructures = breakOfStructures;
-    }
-
-    public void setLiquiditySweeps(List<LiquiditySweep> liquiditySweeps) {
-        this.liquiditySweeps = liquiditySweeps;
+    public void setMarketStructureEvents(List<MarketStructureEvent> marketStructureEvents) {
+        this.marketStructureEvents = marketStructureEvents;
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         MarketStructure that = (MarketStructure) o;
-        return currentTrend == that.currentTrend && Objects.equals(swingPoints, that.swingPoints) && Objects.equals(breakOfStructures, that.breakOfStructures) && Objects.equals(liquiditySweeps, that.liquiditySweeps);
+        return currentTrend == that.currentTrend && Objects.equals(swingPoints, that.swingPoints) && Objects.equals(marketStructureEvents, that.marketStructureEvents);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(currentTrend, swingPoints, breakOfStructures, liquiditySweeps);
+        return Objects.hash(currentTrend, swingPoints, marketStructureEvents);
     }
 }

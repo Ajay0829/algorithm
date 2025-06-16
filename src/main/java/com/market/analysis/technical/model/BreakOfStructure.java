@@ -2,7 +2,7 @@ package com.market.analysis.technical.model;
 
 import com.market.common.SwingPoint;
 
-public class BreakOfStructure {
+public class BreakOfStructure implements MarketEventDetail {
     private final MarketTrend marketTrend;
     private final SwingPoint weakSwingPoint;
 
