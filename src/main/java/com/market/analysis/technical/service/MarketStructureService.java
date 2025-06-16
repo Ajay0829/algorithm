@@ -1,15 +1,11 @@
 package com.market.analysis.technical.service;
 
-import com.market.analysis.technical.model.MarketStructure;
-import com.market.analysis.technical.model.MarketTrend;
-import com.market.analysis.technical.model.MarketStructureEvent;
+import com.market.analysis.technical.model.*;
 import com.market.common.Stock;
 import com.market.common.SwingPoint;
 import com.market.external.polygon.dto.Candle;
 import com.market.external.polygon.dto.PolygonAggregatesResponse;
 import com.market.external.polygon.service.PolygonService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,23 +13,24 @@ import java.util.List;
 @Service
 public class MarketStructureService {
 
-    private static final Logger logger = LoggerFactory.getLogger(MarketStructureService.class);
-
     private final PolygonService polygonService;
     private final SwingPointService swingPointService;
     private final MarketTrendService marketTrendService;
     private final MarketStructureEventService marketStructureEventService;
+    private final ZoneDetectionService zoneDetectionService;
 
     public MarketStructureService(
             PolygonService polygonService,
             SwingPointService swingPointService,
             MarketTrendService marketTrendService,
-            MarketStructureEventService marketStructureEventService
+            MarketStructureEventService marketStructureEventService,
+            ZoneDetectionService zoneDetectionService
     ) {
         this.polygonService = polygonService;
         this.swingPointService = swingPointService;
         this.marketTrendService = marketTrendService;
         this.marketStructureEventService = marketStructureEventService;
+        this.zoneDetectionService = zoneDetectionService;
     }
 
     public MarketStructure getMarketStructure(Stock stock, String startDate, String endDate) {
@@ -46,13 +43,17 @@ public class MarketStructureService {
         List<SwingPoint> swingPoints = swingPointService.getSwingPoints(candles);
         List<MarketStructureEvent> marketStructureEvents = marketStructureEventService.detectMarketStructureEvents(swingPoints);
         MarketTrend currentTrend = marketTrendService.getMarketTrend(marketStructureEvents);
+        List<DemandZone> demandZones = zoneDetectionService.detectDemandZones(candles, swingPoints, marketStructureEvents);
+        List<SupplyZone> supplyZones = zoneDetectionService.detectSupplyZones(candles, swingPoints, marketStructureEvents);
 
         return new MarketStructure(
                 stock,
                 candles,
                 currentTrend,
                 swingPoints,
-                marketStructureEvents
+                marketStructureEvents,
+                demandZones,
+                supplyZones
         );
     }
 }

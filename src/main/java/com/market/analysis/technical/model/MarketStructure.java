@@ -13,19 +13,25 @@ public class MarketStructure {
     private MarketTrend currentTrend;
     private List<SwingPoint> swingPoints;
     private List<MarketStructureEvent> marketStructureEvents;
+    private List<DemandZone> demandZones;
+    private List<SupplyZone> supplyZones;
 
     public MarketStructure(
             Stock stock,
             List<Candle> candles,
             MarketTrend currentTrend,
             List<SwingPoint> swingPoints,
-            List<MarketStructureEvent> marketStructureEvents
+            List<MarketStructureEvent> marketStructureEvents,
+            List<DemandZone> demandZones,
+            List<SupplyZone> supplyZones
     ) {
         this.stock = stock;
         this.candles = candles;
         this.currentTrend = currentTrend;
         this.swingPoints = swingPoints;
         this.marketStructureEvents = marketStructureEvents;
+        this.demandZones = demandZones;
+        this.supplyZones = supplyZones;
     }
 
     public Stock getStock() {
@@ -48,6 +54,14 @@ public class MarketStructure {
         return marketStructureEvents;
     }
 
+    public List<DemandZone> getDemandZones() {
+        return demandZones;
+    }
+
+    public List<SupplyZone> getSupplyZones() {
+        return supplyZones;
+    }
+
     public void setStock(Stock stock) {
         this.stock = stock;
     }
@@ -68,15 +82,27 @@ public class MarketStructure {
         this.marketStructureEvents = marketStructureEvents;
     }
 
+    public void setDemandZones(List<DemandZone> demandZones) {
+        this.demandZones = demandZones;
+    }
+
+    public void setSupplyZones(List<SupplyZone> supplyZones) {
+        this.supplyZones = supplyZones;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         MarketStructure that = (MarketStructure) o;
-        return currentTrend == that.currentTrend && Objects.equals(swingPoints, that.swingPoints) && Objects.equals(marketStructureEvents, that.marketStructureEvents);
+        return currentTrend == that.currentTrend
+                && Objects.equals(swingPoints, that.swingPoints)
+                && Objects.equals(marketStructureEvents, that.marketStructureEvents)
+                && Objects.equals(demandZones, that.demandZones)
+                && Objects.equals(supplyZones, that.supplyZones);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(currentTrend, swingPoints, marketStructureEvents);
+        return Objects.hash(currentTrend, swingPoints, marketStructureEvents, demandZones, supplyZones);
     }
 }
