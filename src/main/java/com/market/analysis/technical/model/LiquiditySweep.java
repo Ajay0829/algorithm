@@ -2,7 +2,7 @@ package com.market.analysis.technical.model;
 
 import com.market.common.SwingPoint;
 
-public class LiquiditySweep {
+public class LiquiditySweep implements MarketEventDetail {
     private final MarketTrend marketTrend;
     private final SwingPoint swingPoint;
     private final LiquiditySweepType type;

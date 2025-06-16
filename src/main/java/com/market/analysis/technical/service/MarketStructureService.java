@@ -1,14 +1,15 @@
 package com.market.analysis.technical.service;
 
-import com.market.analysis.technical.model.BreakOfStructure;
-import com.market.analysis.technical.model.LiquiditySweep;
 import com.market.analysis.technical.model.MarketStructure;
 import com.market.analysis.technical.model.MarketTrend;
+import com.market.analysis.technical.model.MarketStructureEvent;
 import com.market.common.Stock;
 import com.market.common.SwingPoint;
 import com.market.external.polygon.dto.Candle;
 import com.market.external.polygon.dto.PolygonAggregatesResponse;
 import com.market.external.polygon.service.PolygonService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,24 +17,23 @@ import java.util.List;
 @Service
 public class MarketStructureService {
 
+    private static final Logger logger = LoggerFactory.getLogger(MarketStructureService.class);
+
     private final PolygonService polygonService;
     private final SwingPointService swingPointService;
     private final MarketTrendService marketTrendService;
-    private final BreakOfStructureService breakOfStructureService;
-    private final LiquiditySweepService liquiditySweepService;
+    private final MarketStructureEventService marketStructureEventService;
 
     public MarketStructureService(
             PolygonService polygonService,
             SwingPointService swingPointService,
             MarketTrendService marketTrendService,
-            BreakOfStructureService breakOfStructureService,
-            LiquiditySweepService liquiditySweepService
+            MarketStructureEventService marketStructureEventService
     ) {
         this.polygonService = polygonService;
         this.swingPointService = swingPointService;
         this.marketTrendService = marketTrendService;
-        this.breakOfStructureService = breakOfStructureService;
-        this.liquiditySweepService = liquiditySweepService;
+        this.marketStructureEventService = marketStructureEventService;
     }
 
     public MarketStructure getMarketStructure(Stock stock, String startDate, String endDate) {
@@ -44,17 +44,15 @@ public class MarketStructureService {
         );
         List<Candle> candles = response.getResults();
         List<SwingPoint> swingPoints = swingPointService.getSwingPoints(candles);
-        MarketTrend currentTrend = marketTrendService.getMarketTrend(swingPoints);
-        List<BreakOfStructure> breakOfStructures = breakOfStructureService.getBreakOfStructures(swingPoints);
-        List<LiquiditySweep> liquiditySweeps = liquiditySweepService.getLiquiditySweeps(swingPoints);
+        List<MarketStructureEvent> marketStructureEvents = marketStructureEventService.detectMarketStructureEvents(swingPoints);
+        MarketTrend currentTrend = marketTrendService.getMarketTrend(marketStructureEvents);
 
         return new MarketStructure(
                 stock,
                 candles,
                 currentTrend,
                 swingPoints,
-                breakOfStructures,
-                liquiditySweeps
+                marketStructureEvents
         );
     }
 }
