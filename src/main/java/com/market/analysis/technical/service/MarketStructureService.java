@@ -50,6 +50,7 @@ public class MarketStructureService {
 
         return new MarketStructure(
                 stock,
+                candles,
                 currentTrend,
                 swingPoints,
                 breakOfStructures,

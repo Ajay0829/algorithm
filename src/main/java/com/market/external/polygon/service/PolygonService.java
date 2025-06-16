@@ -18,7 +18,7 @@ public class PolygonService {
 
     public PolygonAggregatesResponse getAggregates(String ticker, String multiplier, String timespan, String from, String to) {
         String url = String.format(
-            "https://api.polygon.io/v2/aggs/ticker/%s/range/%s/%s/%s/%s?apiKey=%s",
+            "https://api.polygon.io/v2/aggs/ticker/%s/range/%s/%s/%s/%s?apiKey=%s&limit=50000",
             ticker, multiplier, timespan, from, to, apiKey
         );
         return restTemplate.getForObject(url, PolygonAggregatesResponse.class);

@@ -2,19 +2,29 @@ package com.market.analysis.technical.model;
 
 import com.market.common.Stock;
 import com.market.common.SwingPoint;
+import com.market.external.polygon.dto.Candle;
 
 import java.util.List;
 import java.util.Objects;
 
 public class MarketStructure {
     private Stock stock;
+    private List<Candle> candles;
     private MarketTrend currentTrend;
     private List<SwingPoint> swingPoints;
     private List<BreakOfStructure> breakOfStructures;
     private List<LiquiditySweep> liquiditySweeps;
 
-    public MarketStructure(Stock stock, MarketTrend currentTrend, List<SwingPoint> swingPoints, List<BreakOfStructure> breakOfStructures, List<LiquiditySweep> liquiditySweeps) {
+    public MarketStructure(
+            Stock stock,
+            List<Candle> candles,
+            MarketTrend currentTrend,
+            List<SwingPoint> swingPoints,
+            List<BreakOfStructure> breakOfStructures,
+            List<LiquiditySweep> liquiditySweeps
+    ) {
         this.stock = stock;
+        this.candles = candles;
         this.currentTrend = currentTrend;
         this.swingPoints = swingPoints;
         this.breakOfStructures = breakOfStructures;
@@ -23,6 +33,10 @@ public class MarketStructure {
 
     public Stock getStock() {
         return stock;
+    }
+
+    public List<Candle> getCandles() {
+        return candles;
     }
 
     public MarketTrend getCurrentTrend() {
@@ -43,6 +57,10 @@ public class MarketStructure {
 
     public void setStock(Stock stock) {
         this.stock = stock;
+    }
+
+    public void setCandles(List<Candle> candles) {
+        this.candles = candles;
     }
 
     public void setCurrentTrend(MarketTrend currentTrend) {
