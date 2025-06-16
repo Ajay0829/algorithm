@@ -26,56 +26,56 @@ public class MarketStructureEventService {
         }
         List<MarketStructureEvent> events = new ArrayList<>();
         for (int i = 2; i < swingPoints.size(); i++) {
-            SwingPoint first = swingPoints.get(i - 2);
+            SwingPoint left = swingPoints.get(i - 2);
             SwingPoint middle = swingPoints.get(i - 1);
-            SwingPoint last = swingPoints.get(i);
-            if (isBullishStructure(first, middle, last, thresholdPercent)) {
-                events.add(createBullishBOS(first));
-            } else if (isBullishLiquiditySweep(first, middle, last, thresholdPercent)) {
-                events.add(createBullishLiquiditySweep(first));
-            } else if (isBearishStructure(first, middle, last, thresholdPercent)) {
-                events.add(createBearishBOS(first));
-            } else if (isBearishLiquiditySweep(first, middle, last, thresholdPercent)) {
-                events.add(createBearishLiquiditySweep(first));
+            SwingPoint right = swingPoints.get(i);
+            if (isBullishStructure(left, middle, right, thresholdPercent)) {
+                events.add(createBullishBOS(left, middle, right));
+            } else if (isBullishLiquiditySweep(left, middle, right, thresholdPercent)) {
+                events.add(createBullishLiquiditySweep(left));
+            } else if (isBearishStructure(left, middle, right, thresholdPercent)) {
+                events.add(createBearishBOS(left, middle, right));
+            } else if (isBearishLiquiditySweep(left, middle, right, thresholdPercent)) {
+                events.add(createBearishLiquiditySweep(left));
             }
         }
         return events;
     }
 
-    private boolean isBullishStructure(SwingPoint first, SwingPoint middle, SwingPoint last, double thresholdPercent) {
-        return first.isHigh() && middle.isLow() && last.isHigh()
-                && last.getPrice() > first.getPrice()
-                && calculatePercentageDifference(last.getPrice(), first.getPrice()) > thresholdPercent;
+    private boolean isBullishStructure(SwingPoint left, SwingPoint middle, SwingPoint right, double thresholdPercent) {
+        return left.isHigh() && middle.isLow() && right.isHigh()
+                && right.getPrice() > left.getPrice()
+                && calculatePercentageDifference(right.getPrice(), left.getPrice()) > thresholdPercent;
     }
 
-    private boolean isBullishLiquiditySweep(SwingPoint first, SwingPoint middle, SwingPoint last, double thresholdPercent) {
-        return first.isHigh() && middle.isLow() && last.isHigh()
-                && last.getPrice() > first.getPrice()
-                && calculatePercentageDifference(last.getPrice(), first.getPrice()) > 0
-                && calculatePercentageDifference(last.getPrice(), first.getPrice()) <= thresholdPercent;
+    private boolean isBullishLiquiditySweep(SwingPoint left, SwingPoint middle, SwingPoint right, double thresholdPercent) {
+        return left.isHigh() && middle.isLow() && right.isHigh()
+                && right.getPrice() > left.getPrice()
+                && calculatePercentageDifference(right.getPrice(), left.getPrice()) > 0
+                && calculatePercentageDifference(right.getPrice(), left.getPrice()) <= thresholdPercent;
     }
 
-    private boolean isBearishStructure(SwingPoint first, SwingPoint middle, SwingPoint last, double thresholdPercent) {
-        return first.isLow() && middle.isHigh() && last.isLow()
-                && last.getPrice() < first.getPrice()
-                && Math.abs(calculatePercentageDifference(last.getPrice(), first.getPrice())) > thresholdPercent;
+    private boolean isBearishStructure(SwingPoint left, SwingPoint middle, SwingPoint right, double thresholdPercent) {
+        return left.isLow() && middle.isHigh() && right.isLow()
+                && right.getPrice() < left.getPrice()
+                && Math.abs(calculatePercentageDifference(right.getPrice(), left.getPrice())) > thresholdPercent;
     }
 
-    private boolean isBearishLiquiditySweep(SwingPoint first, SwingPoint middle, SwingPoint last, double thresholdPercent) {
-        return first.isLow() && middle.isHigh() && last.isLow()
-                && last.getPrice() < first.getPrice()
-                && Math.abs(calculatePercentageDifference(last.getPrice(), first.getPrice())) > 0
-                && Math.abs(calculatePercentageDifference(last.getPrice(), first.getPrice())) <= thresholdPercent;
+    private boolean isBearishLiquiditySweep(SwingPoint left, SwingPoint middle, SwingPoint right, double thresholdPercent) {
+        return left.isLow() && middle.isHigh() && right.isLow()
+                && right.getPrice() < left.getPrice()
+                && Math.abs(calculatePercentageDifference(right.getPrice(), left.getPrice())) > 0
+                && Math.abs(calculatePercentageDifference(right.getPrice(), left.getPrice())) <= thresholdPercent;
     }
 
-    private MarketStructureEvent createBullishBOS(SwingPoint weakHigh) {
-        BreakOfStructure bos = new BreakOfStructure(MarketTrend.UPTREND, weakHigh);
-        return new MarketStructureEvent(MarketStructureEvent.EventType.BREAK_OF_STRUCTURE, MarketTrend.UPTREND, weakHigh, bos);
+    private MarketStructureEvent createBullishBOS(SwingPoint left, SwingPoint middle, SwingPoint right) {
+        BreakOfStructure bos = new BreakOfStructure(MarketTrend.UPTREND, left, middle, right);
+        return new MarketStructureEvent(MarketStructureEvent.EventType.BREAK_OF_STRUCTURE, MarketTrend.UPTREND, left, bos);
     }
 
-    private MarketStructureEvent createBearishBOS(SwingPoint weakLow) {
-        BreakOfStructure bos = new BreakOfStructure(MarketTrend.DOWNTREND, weakLow);
-        return new MarketStructureEvent(MarketStructureEvent.EventType.BREAK_OF_STRUCTURE, MarketTrend.DOWNTREND, weakLow, bos);
+    private MarketStructureEvent createBearishBOS(SwingPoint left, SwingPoint middle, SwingPoint right) {
+        BreakOfStructure bos = new BreakOfStructure(MarketTrend.DOWNTREND, left, middle, right);
+        return new MarketStructureEvent(MarketStructureEvent.EventType.BREAK_OF_STRUCTURE, MarketTrend.DOWNTREND, left, bos);
     }
 
     private MarketStructureEvent createBullishLiquiditySweep(SwingPoint weakHigh) {
