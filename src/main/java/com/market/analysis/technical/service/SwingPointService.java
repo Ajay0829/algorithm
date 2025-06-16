@@ -101,7 +101,7 @@ public class SwingPointService {
                         : Collections.min(rightPriceRange, Comparator.comparingDouble(PriceRange::getLow)).getLow();
 
                 if (priceMovedEnough(leftLow, prices.get(i).getHigh()) || priceMovedEnough(prices.get(i).getHigh(), rightLow)) {
-                    results.add(new SwingPoint(i, prices.get(i).getHigh(), SwingType.HIGH));
+                    results.add(new SwingPoint(i, prices.get(i).getHigh(), candles.get(i), SwingType.HIGH));
                 }
 
             } else if (lowIndex == i) {
@@ -112,7 +112,7 @@ public class SwingPointService {
                         : Collections.max(rightPriceRange, Comparator.comparingDouble(PriceRange::getHigh)).getHigh();
 
                 if (priceMovedEnough(leftHigh, prices.get(i).getLow()) || priceMovedEnough(prices.get(i).getLow(), rightHigh)) {
-                    results.add(new SwingPoint(i, prices.get(i).getLow(), SwingType.LOW));
+                    results.add(new SwingPoint(i, prices.get(i).getLow(), candles.get(i), SwingType.LOW));
                 }
             }
         }
