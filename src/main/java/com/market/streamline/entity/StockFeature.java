@@ -101,5 +101,36 @@ public class StockFeature {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-}
 
+    // Getters
+    public Long getId() { return id; }
+    public String getStockSymbol() { return stockSymbol; }
+    public String getTimeframe() { return timeframe; }
+    public LocalDateTime getCandleTimestamp() { return candleTimestamp; }
+    public Double getHigh() { return high; }
+    public Double getLow() { return low; }
+    public Double getOpen() { return open; }
+    public Double getClose() { return close; }
+    public Double getVolume() { return volume; }
+    public Double getCurrentSwingHigh() { return currentSwingHigh; }
+    public Double getCurrentSwingLow() { return currentSwingLow; }
+    public Double getCurrentPriceRelativeValue() { return currentPriceRelativeValue; }
+    public Double getCurrentCandleDistanceFromLatestSwing() { return currentCandleDistanceFromLatestSwing; }
+    public Double getPrevNCandleHigh() { return prevNCandleHigh; }
+    public Double getPrevNCandleLow() { return prevNCandleLow; }
+    public Double getPrevNCandleVolume() { return prevNCandleVolume; }
+    public Double getNearestRelevantZoneNearPoint() { return nearestRelevantZoneNearPoint; }
+    public Double getNearestRelevantZoneFarPoint() { return nearestRelevantZoneFarPoint; }
+    public String getNearestRelevantZoneType() { return nearestRelevantZoneType; }
+    public Double getNearestRelevantZoneStrength() { return nearestRelevantZoneStrength; }
+    public Double getNearestRelevantZoneBosVolume() { return nearestRelevantZoneBosVolume; }
+    public Double getNearbySellLiquidityZone() { return nearbySellLiquidityZone; }
+    public Double getNearbyBuyLiquidityZone() { return nearbyBuyLiquidityZone; }
+    public Double getRsi14() { return rsi14; }
+    public Double getMa14() { return ma14; }
+    public Boolean getIsEarningsDay() { return isEarningsDay; }
+    public String getEarningsReleaseSession() { return earningsReleaseSession; }
+    public Double getForwardPe() { return forwardPe; }
+    public Double getAtr() { return atr; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+}

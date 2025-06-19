@@ -27,5 +27,41 @@ public class SwingPoint {
     @Column(name = "price")
     private Double price;
 
+    public SwingPoint(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String swingType, Double price) {
+        this.stockSymbol = stockSymbol;
+        this.timeframe = timeframe;
+        this.candleTimestamp = candleTimestamp;
+        this.swingType = swingType;
+        this.price = price;
+    }
+
+    public SwingPoint() {
+
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getStockSymbol() {
+        return stockSymbol;
+    }
+
+    public String getTimeframe() {
+        return timeframe;
+    }
+
+    public LocalDateTime getCandleTimestamp() {
+        return candleTimestamp;
+    }
+
+    public String getSwingType() {
+        return swingType;
+    }
+
+    public Double getPrice() {
+        return price;
+    }
+
 }
 
