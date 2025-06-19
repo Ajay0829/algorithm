@@ -2,11 +2,9 @@ package com.market.streamline.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.SwingPoint;
 import com.market.streamline.model.CandleEvent;
 import com.market.streamline.repository.CandleRepository;
-import com.market.streamline.service.FeatureExtractionService;
-import com.market.streamline.service.SwingPointService;
+import com.market.streamline.service.*;
 import com.market.streamline.plot.SwingPointPlotExporter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -14,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
 
 @Component
 public class CandleEventConsumer {
@@ -36,6 +33,12 @@ public class CandleEventConsumer {
     private int eventCount = 0;
     private int totalEvents = 0;
     private String stockSymbol = null;
+    @Autowired
+    private BreakOfStructureService breakOfStructureService;
+    @Autowired
+    private LiquidityService liquidityService;
+    @Autowired
+    private ZoneService zoneService;
 
     public void setTotalEvents(int total, String symbol) {
         this.totalEvents = total;
@@ -43,7 +46,7 @@ public class CandleEventConsumer {
     }
 
     @KafkaListener(topics = "candle-added", groupId = "feature-extractor-group")
-    public void listen(String message) {
+    public void listenCandleAdded(String message) {
         try {
             CandleEvent candleEvent = objectMapper.readValue(message, CandleEvent.class);
 
@@ -59,8 +62,11 @@ public class CandleEventConsumer {
                     candleEvent.getVolume()
             );
             candleRepository.save(candleEntity);
-
-            Optional<SwingPoint> swingPoint = swingPointService.checkForSwingPoint(candleEntity);
+            swingPointService.checkForSwingPoint(candleEntity);
+            breakOfStructureService.checkForBreakOfStructure(candleEntity);
+            liquidityService.invalidateLiquidityZones(candleEntity);
+            zoneService.invalidateZones(candleEntity);
+            zoneService.updateZoneStrength(candleEntity);
             eventCount++;
             // After all events are processed, export for plotting
             if (eventCount == totalEvents && stockSymbol != null) {
