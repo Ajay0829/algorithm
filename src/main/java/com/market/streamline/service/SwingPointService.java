@@ -78,10 +78,12 @@ public class SwingPointService {
                 if (Objects.equals(recent.getSwingType(), SwingType.HIGH.name())) {
                     if (priceMovedEnough(recent.getPrice(), sp.getPrice(), false)) {
                         swingPointRepository.save(sp);
+                        // TODO: Send event for new swing point
                         return Optional.of(sp);
                     }
                 } else {
                     if (priceMovedEnough(recent.getPrice(), sp.getPrice(), true)) {
+                        // TODO: Send event for new swing point
                         swingPointRepository.save(sp);
                         return Optional.of(sp);
                     }
@@ -92,10 +94,12 @@ public class SwingPointService {
                 return Optional.of(recent);
             } else { // If not reuse, delete the recent one and save the new swing point
                 swingPointRepository.delete(recent);
+                // TODO: Send event for new swing point
                 swingPointRepository.save(sp);
                 return Optional.of(sp);
             }
         } else {
+            // TODO: Send event for new swing point
             swingPointRepository.save(sp);
             return Optional.of(sp);
         }
@@ -119,51 +123,39 @@ public class SwingPointService {
     }
 
     private Optional<SwingPoint> getSwingPoint(List<CandleEntity> sortedCandles, boolean direction) {
-        for (int i = WINDOW_SIZE; i < 2 * WINDOW_SIZE; i++) {
-            CandleEntity current = sortedCandles.get(i);
+
+        CandleEntity currentCandle = sortedCandles.get(WINDOW_SIZE);
+
+        boolean isLeftCorrect = sortedCandles.subList(0, WINDOW_SIZE).stream()
+                .allMatch(candle -> isInflectionPoint(candle, currentCandle, direction));
+        boolean isRightCorrect = sortedCandles.subList(WINDOW_SIZE + 1, 2 * WINDOW_SIZE + 1).stream()
+                .allMatch(candle -> isInflectionPoint(candle, currentCandle, direction));
 
 
-            boolean leftWindowCovered = false, rightWindowCovered = false;
-            for (int j = i - 1; j >= i - WINDOW_SIZE; j--) {
-                CandleEntity leftCandle = sortedCandles.get(j);
-                if (direction) {
-                    if (current.getHigh() < leftCandle.getHigh()) break;
-                } else {
-                    if (current.getLow() > leftCandle.getLow()) break;
-                }
+            if (isLeftCorrect && isRightCorrect) {
 
-                if (j == i - WINDOW_SIZE) {
-                    leftWindowCovered = true;
-                }
-            }
-
-            for (int j = i + 1; j <= 2 * WINDOW_SIZE; j++) {
-                CandleEntity rightCandle = sortedCandles.get(j);
-                if (direction) {
-                    if (current.getHigh() < rightCandle.getHigh()) break;
-                } else {
-                    if (current.getLow() > rightCandle.getLow()) break;
-                }
-
-                if (j == 2 * WINDOW_SIZE) {
-                    rightWindowCovered = true;
-                }
-            }
-
-            if (leftWindowCovered && rightWindowCovered) {
                 return Optional.of(
                         new SwingPoint(
-                                current.getStockSymbol(),
-                                current.getTimeframe(),
-                                current.getCandleTimestamp(),
+                                currentCandle.getStockSymbol(),
+                                currentCandle.getTimeframe(),
+                                currentCandle.getCandleTimestamp(),
                                 direction ? SwingType.HIGH.name() : SwingType.LOW.name(),
-                                direction ? current.getHigh() : current.getLow()
+                                direction ? currentCandle.getHigh() : currentCandle.getLow()
                         )
                 );
             }
+        return Optional.empty();
+    }
+
+    private boolean isInflectionPoint(CandleEntity current, CandleEntity reference, boolean direction) {
+        if (direction) {
+            // check if reference is a high
+            return current.getHigh() < reference.getHigh();
+        } else {
+            // check if reference is a low
+            return current.getLow() > reference.getLow();
         }
 
-        return Optional.empty();
     }
 
     private boolean priceMovedEnough(double price, double referencePrice, boolean direction) {

@@ -1,23 +1,27 @@
 package com.market.streamline.kafka;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.market.streamline.model.BOSEvent;
-import com.market.streamline.model.CandleEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CandleEventProducer {
+public class BOSEventProducer {
+
+    private static final String TOPIC = "bos-event-topic";
+
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void sendCandleEvent(CandleEvent event) {
+    public void sendBOSEvent(BOSEvent event) {
         try {
-            String json = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send("candle-added", json);
-        } catch (Exception e) {
+            String message = objectMapper.writeValueAsString(event);
+            kafkaTemplate.send(TOPIC, message);
+        } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
     }
