@@ -21,6 +21,15 @@ public class Candle {
     @JsonProperty("v")
     private double volume;
 
+    public Candle(long timestamp, double open, double high, double low, double close, double volume) {
+        this.timestamp = timestamp;
+        this.open = open;
+        this.high = high;
+        this.low = low;
+        this.close = close;
+        this.volume = volume;
+    }
+
     // Getters and setters
     public long getTimestamp() {
         return timestamp;

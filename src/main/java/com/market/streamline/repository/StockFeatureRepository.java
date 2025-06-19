@@ -8,4 +8,3 @@ import org.springframework.stereotype.Repository;
 public interface StockFeatureRepository extends JpaRepository<StockFeature, Long> {
     // Basic CRUD methods are inherited from JpaRepository
 }
-
