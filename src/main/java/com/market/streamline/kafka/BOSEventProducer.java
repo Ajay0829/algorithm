@@ -2,6 +2,7 @@ package com.market.streamline.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.market.streamline.model.BOSEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -15,7 +16,7 @@ public class BOSEventProducer {
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     public void sendBOSEvent(BOSEvent event) {
         try {

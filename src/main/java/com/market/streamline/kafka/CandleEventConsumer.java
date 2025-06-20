@@ -3,9 +3,9 @@ package com.market.streamline.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.model.CandleEvent;
+import com.market.streamline.plot.GenericPlotExporter;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.service.*;
-import com.market.streamline.plot.SwingPointPlotExporter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -23,7 +23,7 @@ public class CandleEventConsumer {
     private SwingPointService swingPointService;
 
     @Autowired
-    private SwingPointPlotExporter swingPointPlotExporter;
+    private GenericPlotExporter genericPlotExporter;
 
     @Autowired
     private CandleRepository candleRepository;
@@ -70,8 +70,8 @@ public class CandleEventConsumer {
             eventCount++;
             // After all events are processed, export for plotting
             if (eventCount == totalEvents && stockSymbol != null) {
-                swingPointPlotExporter.exportSwingPointsCsv(stockSymbol, "1D", stockSymbol + "_swing_points.csv");
-                System.out.println("Exported swing points for " + stockSymbol);
+                genericPlotExporter.exportPlotCsv(stockSymbol, "1D", stockSymbol + "_swing_points.csv");
+                System.out.println("Exported plot points for " + stockSymbol);
             }
         } catch (Exception e) {
             e.printStackTrace();
