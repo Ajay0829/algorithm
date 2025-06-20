@@ -23,7 +23,7 @@ public class MarketBatchStartupRunner implements CommandLineRunner {
     public void run(String... args) {
         System.out.println("Starting MarketBatchStartupRunner");
         // Single file mode
-        String csvFilePath = "/Users/aramapuram/AlgorithmicTrading/data/actual/Stocks/aac.us.csv";
+        String csvFilePath = "/Users/aramapuram/AlgorithmicTrading/data/actual/Stocks/ko.us.csv";
         String fileName = csvFilePath.substring(csvFilePath.lastIndexOf('/') + 1);
         String stockSymbol = fileName.split("\\.")[0];
         String timeframe = "1D";

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS swing_points (
     candle_timestamp TIMESTAMP NOT NULL,
     price DOUBLE PRECISION,
     swing_type VARCHAR(8), -- HIGH or LOW
+    confirmed BOOLEAN DEFAULT FALSE,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, swing_type)
 );
 CREATE INDEX IF NOT EXISTS idx_swing_points_symbol_timeframe_ts
@@ -88,7 +89,7 @@ CREATE TABLE IF NOT EXISTS sweeps (
     timeframe VARCHAR(16) NOT NULL,
     candle_timestamp TIMESTAMP NOT NULL,
     type VARCHAR(16), -- BUY, SELL
-    swing_point_id INTEGER REFERENCES swing_points(id),
+    swing_point_id INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     price DOUBLE PRECISION,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, type)
 );
@@ -102,8 +103,8 @@ CREATE TABLE IF NOT EXISTS bos (
     timeframe VARCHAR(16) NOT NULL,
     candle_timestamp TIMESTAMP NOT NULL,
     type VARCHAR(16), -- e.g., UP, DOWN
-    weak_swing_point INTEGER REFERENCES swing_points(id),
-    strong_swing_point INTEGER REFERENCES swing_points(id),
+    weak_swing_point INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
+    strong_swing_point INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, type)
 );
 CREATE INDEX IF NOT EXISTS idx_bos_symbol_timeframe_ts
@@ -135,3 +136,20 @@ CREATE TABLE IF NOT EXISTS fundamentals (
 );
 CREATE INDEX IF NOT EXISTS idx_fundamentals_stock_earnings
     ON fundamentals (stock_symbol, earnings_release_session, next_earnings_date);
+
+-- Table: candles
+CREATE TABLE IF NOT EXISTS candles (
+    id SERIAL PRIMARY KEY,
+    candle_timestamp TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL,
+    close DOUBLE PRECISION,
+    high DOUBLE PRECISION,
+    low DOUBLE PRECISION,
+    open DOUBLE PRECISION,
+    stock_symbol VARCHAR(255) NOT NULL,
+    timeframe VARCHAR(255) NOT NULL,
+    volume DOUBLE PRECISION,
+    UNIQUE (stock_symbol, timeframe, candle_timestamp)
+);
+CREATE INDEX IF NOT EXISTS idx_candles_symbol_timeframe_ts
+    ON candles (stock_symbol, timeframe, candle_timestamp);
+

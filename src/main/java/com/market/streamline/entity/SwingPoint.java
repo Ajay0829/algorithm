@@ -27,12 +27,16 @@ public class SwingPoint {
     @Column(name = "price")
     private Double price;
 
-    public SwingPoint(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String swingType, Double price) {
+    @Column
+    private Boolean confirmed = false;
+
+    public SwingPoint(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String swingType, Double price, Boolean confirmed) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.candleTimestamp = candleTimestamp;
         this.swingType = swingType;
         this.price = price;
+        this.confirmed = confirmed;
     }
 
     public SwingPoint() {
@@ -63,5 +67,10 @@ public class SwingPoint {
         return price;
     }
 
+    public Boolean getConfirmed() { return confirmed;}
+
+    public void setConfirmed(Boolean confirmed) {
+        this.confirmed = confirmed;
+    }
 }
 

@@ -21,18 +21,79 @@ public class BreakOfStructure {
     @Column(name = "candle_timestamp", nullable = false)
     private LocalDateTime candleTimestamp;
 
+    @Column(name = "weak_swing_timestamp")
+    private LocalDateTime weakSwingTimestamp;
+
     @Column(name = "direction") // e.g., UP, DOWN
     private String direction;
 
     @Column(name = "type")
     private String type;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "weak_swing_point")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(
+        name = "weak_swing_point",
+        foreignKey = @ForeignKey(
+            name = "bos_weak_swing_point_fkey",
+            foreignKeyDefinition = "FOREIGN KEY (weak_swing_point) REFERENCES swing_points(id) ON DELETE CASCADE"
+        )
+    )
     private SwingPoint weakSwingPoint;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "strong_swing_point")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(
+        name = "strong_swing_point",
+        foreignKey = @ForeignKey(
+            name = "bos_strong_swing_point_fkey",
+            foreignKeyDefinition = "FOREIGN KEY (strong_swing_point) REFERENCES swing_points(id) ON DELETE CASCADE"
+        )
+    )
     private SwingPoint strongSwingPoint;
+
+    public BreakOfStructure(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String direction, String type, SwingPoint weakSwingPoint, SwingPoint strongSwingPoint) {
+        this.stockSymbol = stockSymbol;
+        this.timeframe = timeframe;
+        this.candleTimestamp = candleTimestamp;
+        this.direction = direction;
+        this.type = type;
+        this.weakSwingPoint = weakSwingPoint;
+        this.strongSwingPoint = strongSwingPoint;
+    }
+
+    public BreakOfStructure() {
+
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getStockSymbol() {
+        return stockSymbol;
+    }
+
+    public String getTimeframe() {
+        return timeframe;
+    }
+
+    public LocalDateTime getCandleTimestamp() {
+        return candleTimestamp;
+    }
+
+    public String getDirection() {
+        return direction;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public SwingPoint getWeakSwingPoint() {
+        return weakSwingPoint;
+    }
+
+    public SwingPoint getStrongSwingPoint() {
+        return strongSwingPoint;
+    }
 }
 

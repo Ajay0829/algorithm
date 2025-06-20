@@ -1,6 +1,7 @@
 package com.market.streamline.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.market.streamline.entity.BreakOfStructure;
 import com.market.streamline.model.BOSEvent;
 import com.market.streamline.service.TrendService;
@@ -15,7 +16,7 @@ public class BOSEventConsumer {
     @Autowired
     private ZoneService zoneService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     @Autowired
     private TrendService trendService;
 
@@ -24,8 +25,6 @@ public class BOSEventConsumer {
         try {
 
             BOSEvent bosEvent = objectMapper.readValue(message, BOSEvent.class);
-            System.out.println("Received BOSEvent: " + bosEvent);
-
             BreakOfStructure breakOfStructure = new BreakOfStructure();
             // Process the BOSEvent to identify zones
             zoneService.identifyZone(breakOfStructure);
