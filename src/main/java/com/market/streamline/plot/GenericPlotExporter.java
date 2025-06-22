@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.FileWriter;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,34 +33,43 @@ public class GenericPlotExporter {
         // Use only the date part for matching
         Set<String> swingHighDates = swingPoints.stream()
                 .filter(sp -> "HIGH".equalsIgnoreCase(sp.getSwingType()))
-                .map(sp -> sp.getCandleTimestamp().toLocalDate().toString())
+                .map(sp -> getLocalDateTimeFromCandleTimestamp(sp.getCandleTimestamp()))
                 .collect(Collectors.toSet());
         Set<String> swingLowDates = swingPoints.stream()
                 .filter(sp -> "LOW".equalsIgnoreCase(sp.getSwingType()))
-                .map(sp -> sp.getCandleTimestamp().toLocalDate().toString())
+                .map(sp -> getLocalDateTimeFromCandleTimestamp(sp.getCandleTimestamp()))
+                .collect(Collectors.toSet());
+        Set<String> majorSwingHighDates = swingPoints.stream()
+                .filter(sp -> "HIGH".equalsIgnoreCase(sp.getSwingType()) && sp.getIsMajor())
+                .map(sp -> getLocalDateTimeFromCandleTimestamp(sp.getCandleTimestamp()))
+                .collect(Collectors.toSet());
+
+        Set<String> majorSwingLowDates = swingPoints.stream()
+                .filter(sp -> "LOW".equalsIgnoreCase(sp.getSwingType()) && sp.getIsMajor())
+                .map(sp -> getLocalDateTimeFromCandleTimestamp(sp.getCandleTimestamp()))
                 .collect(Collectors.toSet());
 
         // Fetch all BOS events for this symbol/timeframe
         List<BreakOfStructure> bosEvents = breakOfStructureRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
         // Map BOS candle timestamp to weak swing timestamp
-        Map<LocalDate, String> bosToWeakSwing = bosEvents.stream()
+        Map<String, String> bosToWeakSwing = bosEvents.stream()
                 .collect(Collectors.toMap(
-                        bos -> bos.getCandleTimestamp().toLocalDate(),
-                        bos -> bos.getWeakSwingPoint() != null ? bos.getWeakSwingPoint().getCandleTimestamp().toLocalDate().toString() : "",
+                        bos -> getLocalDateTimeFromCandleTimestamp(bos.getCandleTimestamp()),
+                        bos -> bos.getWeakSwingPoint() != null ? getLocalDateTimeFromCandleTimestamp(bos.getWeakSwingPoint().getCandleTimestamp()) : "",
                         (existing, replacement) -> existing // handle duplicates if any
                 ));
 
-        Map<LocalDate, String> bosToSwingType = bosEvents.stream()
+        Map<String, String> bosToSwingType = bosEvents.stream()
                 .collect(Collectors.toMap(
-                        bos -> bos.getCandleTimestamp().toLocalDate(),
+                        bos -> getLocalDateTimeFromCandleTimestamp(bos.getCandleTimestamp()),
                         BreakOfStructure::getType,
                         (existing, replacement) -> existing // handle duplicates if any
                 ));
 
         try (FileWriter writer = new FileWriter(outputPath)) {
-            writer.write("timestamp,open,high,low,close,volume,swing_high,swing_low,break_of_structure,type\n");
+            writer.write("timestamp,open,high,low,close,volume,swing_high,swing_low,is_major,break_of_structure,type\n");
             for (CandleEntity candle : candles) {
-                String ts = candle.getCandleTimestamp().toLocalDate().toString();
+                String ts = getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp());
                 String open = String.format("%.2f", candle.getOpen());
                 String high = String.format("%.2f", candle.getHigh());
                 String low = String.format("%.2f", candle.getLow());
@@ -66,15 +77,21 @@ public class GenericPlotExporter {
                 String volume = String.format("%.0f", candle.getVolume());
                 String swingHigh = swingHighDates.contains(ts) ? high : "";
                 String swingLow = swingLowDates.contains(ts) ? low : "";
-                String breakOfStructure = bosToWeakSwing.getOrDefault(candle.getCandleTimestamp().toLocalDate(), "");
-                String type = bosToSwingType.getOrDefault(candle.getCandleTimestamp().toLocalDate(), "");
+                String isMajor = majorSwingHighDates.contains(ts) ? "true" : (majorSwingLowDates.contains(ts) ? "true" : "false");
+                String breakOfStructure = bosToWeakSwing.getOrDefault(getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp()), "");
+                String type = bosToSwingType.getOrDefault(getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp()), "");
                 writer.write(String.join(",",
-                        ts, open, high, low, close, volume, swingHigh, swingLow, breakOfStructure, type
+                        ts, open, high, low, close, volume, swingHigh, swingLow, isMajor, breakOfStructure, type
                 ) + "\n");
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private String getLocalDateTimeFromCandleTimestamp(LocalDateTime timestamp) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return timestamp.atZone(ZoneId.systemDefault()).toLocalDateTime().format(formatter);
     }
 }
 

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "bos", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"stock_symbol", "timeframe", "candle_timestamp"})
+        @UniqueConstraint(columnNames = {"stock_symbol", "timeframe", "candle_timestamp", "type"})
 })
 public class BreakOfStructure {
     @Id
@@ -20,9 +20,6 @@ public class BreakOfStructure {
 
     @Column(name = "candle_timestamp", nullable = false)
     private LocalDateTime candleTimestamp;
-
-    @Column(name = "weak_swing_timestamp")
-    private LocalDateTime weakSwingTimestamp;
 
     @Column(name = "direction") // e.g., UP, DOWN
     private String direction;

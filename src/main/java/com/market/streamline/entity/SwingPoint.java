@@ -30,13 +30,17 @@ public class SwingPoint {
     @Column
     private Boolean confirmed = false;
 
-    public SwingPoint(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String swingType, Double price, Boolean confirmed) {
+    @Column(name = "is_major")
+    private Boolean isMajor = false;
+
+    public SwingPoint(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String swingType, Double price, Boolean confirmed, Boolean isMajor) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.candleTimestamp = candleTimestamp;
         this.swingType = swingType;
         this.price = price;
         this.confirmed = confirmed;
+        this.isMajor = isMajor;
     }
 
     public SwingPoint() {
@@ -72,5 +76,12 @@ public class SwingPoint {
     public void setConfirmed(Boolean confirmed) {
         this.confirmed = confirmed;
     }
-}
 
+    public Boolean getIsMajor() {
+        return isMajor;
+    }
+
+    public void setIsMajor(Boolean isMajor) {
+        this.isMajor = isMajor;
+    }
+}

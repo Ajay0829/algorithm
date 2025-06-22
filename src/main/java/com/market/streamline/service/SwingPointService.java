@@ -1,12 +1,15 @@
 package com.market.streamline.service;
 
 import com.market.common.SwingType;
+import com.market.streamline.entity.BreakOfStructure;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.entity.SwingPoint;
+import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.SwingPointRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.core.env.Environment;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -17,34 +20,18 @@ public class SwingPointService {
     private final int WINDOW_SIZE = 10;
     private final SwingPointRepository swingPointRepository;
     private final CandleRepository candleRepository;
+    private final BreakOfStructureRepository breakOfStructureRepository;
+    private final Environment env;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
+        this.breakOfStructureRepository = breakOfStructureRepository;
+        this.env = env;
     }
 
     public Optional<SwingPoint> checkForSwingPoint(CandleEntity candleEntity) {
 
-        Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(
-                candleEntity.getStockSymbol(), candleEntity.getTimeframe()
-        );
-
-        if (recentSwingPoint.isPresent()) {
-            SwingPoint recent = recentSwingPoint.get();
-            if (!recent.getConfirmed()) {
-                if (Objects.equals(recent.getSwingType(), SwingType.HIGH.name())) {
-                    if (priceMovedEnough(recent.getPrice(), candleEntity.getLow(), false)) {
-                        recent.setConfirmed(true);
-                        swingPointRepository.save(recent);
-                    }
-                } else {
-                    if (priceMovedEnough(recent.getPrice(), candleEntity.getHigh(), true)) {
-                        recent.setConfirmed(true);
-                        swingPointRepository.save(recent);
-                    }
-                }
-            }
-        }
         // Fetch 2*N CandleEntity candles before this timestamp for the timeframe and stock
         List<CandleEntity> candleEntities = candleRepository.findRecentCandles(
                 candleEntity.getStockSymbol(),
@@ -79,12 +66,30 @@ public class SwingPointService {
             return existingSwingPoint;
         }
 
-        // Fetch the latest swing point for this stock and timeframe
-        Optional<SwingPoint> recentSwingPoint = swingPointRepository.findAll().stream()
-                .filter(existing -> Objects.equals(existing.getStockSymbol(), sp.getStockSymbol()) &&
-                        Objects.equals(existing.getTimeframe(), sp.getTimeframe()))
-                .max(Comparator.comparing(SwingPoint::getCandleTimestamp));
+        Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(
+                sp.getStockSymbol(), sp.getTimeframe()
+        );
 
+        // Find the latest strong swing point (confirmed swing point of opposite type)
+        Optional<SwingPoint> latestStrongSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeAndSwingTypeAndConfirmedTrueOrderByCandleTimestampDesc(
+            sp.getStockSymbol(),
+            sp.getTimeframe(),
+            SwingType.HIGH.name().equals(sp.getSwingType()) ? SwingType.LOW.name() : SwingType.HIGH.name()
+        );
+
+        // Find the latest BOS for this symbol and timeframe
+        Optional<BreakOfStructure> latestBOS = breakOfStructureRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(
+            sp.getStockSymbol(),
+            sp.getTimeframe()
+        );
+        boolean isMajor = false;
+
+        if (latestStrongSwingPoint.isPresent() && latestBOS.isPresent()) {
+            if (latestBOS.get().getCandleTimestamp().isAfter(latestStrongSwingPoint.get().getCandleTimestamp())) {
+                isMajor = true;
+            }
+        }
+        sp.setIsMajor(isMajor);
 
         if (recentSwingPoint.isPresent()) {
             SwingPoint recent = recentSwingPoint.get();
@@ -96,18 +101,14 @@ public class SwingPointService {
             if (!Objects.equals(recent.getSwingType(), sp.getSwingType())) {
                 // check if price move enough to consider it a new swing point
                 if (Objects.equals(recent.getSwingType(), SwingType.HIGH.name())) {
-                    if (priceMovedEnough(recent.getPrice(), sp.getPrice(), false)) {
-                        recent.setConfirmed(true);
-                        swingPointRepository.save(recent);
+                    if (priceMovedEnough(recent.getPrice(), sp.getPrice(), sp.getTimeframe(), false)) {
                         swingPointRepository.save(sp);
                         // TODO: Send event for new swing point
                         return Optional.of(sp);
                     }
                 } else {
-                    if (priceMovedEnough(recent.getPrice(), sp.getPrice(), true)) {
+                    if (priceMovedEnough(recent.getPrice(), sp.getPrice(), sp.getTimeframe(), true)) {
                         // TODO: Send event for new swing point
-                        recent.setConfirmed(true);
-                        swingPointRepository.save(recent);
                         swingPointRepository.save(sp);
                         return Optional.of(sp);
                     }
@@ -147,28 +148,23 @@ public class SwingPointService {
     }
 
     private Optional<SwingPoint> getSwingPoint(List<CandleEntity> sortedCandles, boolean direction) {
-
-        CandleEntity currentCandle = sortedCandles.get(WINDOW_SIZE);
-
-        boolean isLeftCorrect = sortedCandles.subList(0, WINDOW_SIZE).stream()
-                .allMatch(candle -> isInflectionPoint(candle, currentCandle, direction));
-        boolean isRightCorrect = sortedCandles.subList(WINDOW_SIZE + 1, 2 * WINDOW_SIZE + 1).stream()
+        CandleEntity currentCandle = sortedCandles.get(sortedCandles.size() - 1);
+        boolean isLeftCorrect = sortedCandles.stream()
                 .allMatch(candle -> isInflectionPoint(candle, currentCandle, direction));
 
-
-            if (isLeftCorrect && isRightCorrect) {
-
-                return Optional.of(
-                        new SwingPoint(
-                                currentCandle.getStockSymbol(),
-                                currentCandle.getTimeframe(),
-                                currentCandle.getCandleTimestamp(),
-                                direction ? SwingType.HIGH.name() : SwingType.LOW.name(),
-                                direction ? currentCandle.getHigh() : currentCandle.getLow(),
-                                false
-                        )
-                );
-            }
+        if (isLeftCorrect) {
+            return Optional.of(
+                    new SwingPoint(
+                            currentCandle.getStockSymbol(),
+                            currentCandle.getTimeframe(),
+                            currentCandle.getCandleTimestamp(),
+                            direction ? SwingType.HIGH.name() : SwingType.LOW.name(),
+                            direction ? currentCandle.getHigh() : currentCandle.getLow(),
+                            false,
+                            false
+                    )
+            );
+        }
         return Optional.empty();
     }
 
@@ -183,9 +179,16 @@ public class SwingPointService {
 
     }
 
-    private boolean priceMovedEnough(double price, double referencePrice, boolean direction) {
+    private boolean priceMovedEnough(double price, double referencePrice, String timeframe, boolean direction) {
         double percentageMove = Math.abs(price - referencePrice) * 100 / price;
-        double SWING_POINT_THRESHOLD = 5;
+        double SWING_POINT_THRESHOLD = getSwingThreshold(timeframe);
         return (direction == (price < referencePrice)) && percentageMove >= SWING_POINT_THRESHOLD;
+    }
+
+    public double getSwingThreshold(String timeframe) {
+        String key = "swing.threshold." + timeframe;
+        String value = env.getProperty(key);
+        if (value == null) throw new IllegalArgumentException("No swing threshold configured for timeframe: " + timeframe);
+        return Double.parseDouble(value);
     }
 }
