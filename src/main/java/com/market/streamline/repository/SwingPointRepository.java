@@ -16,9 +16,11 @@ public interface SwingPointRepository extends JpaRepository<SwingPoint, Long> {
         String stockSymbol, String timeframe, String swingType, java.time.LocalDateTime candleTimestamp
     );
 
-    List<SwingPoint> findTop3ByStockSymbolAndTimeframeOrderByCandleTimestampDesc(String stockSymbol, String timeframe);
-
     List<SwingPoint> findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDesc(String stockSymbol, String timeframe);
 
     Optional<SwingPoint> findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(String stockSymbol, String timeframe);
+
+    Optional<SwingPoint> findTopByStockSymbolAndTimeframeAndSwingTypeAndConfirmedTrueOrderByCandleTimestampDesc(
+        String stockSymbol, String timeframe, String swingType
+    );
 }

@@ -8,47 +8,77 @@ import com.market.streamline.kafka.BOSEventProducer;
 import com.market.streamline.model.BOSEvent;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.SwingPointRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class BreakOfStructureService {
 
-    @Autowired
-    private BOSEventProducer bosEventProducer;
-    @Autowired
-    private SwingPointRepository swingPointRepository;
-    @Autowired
-    private BreakOfStructureRepository breakOfStructureRepository;
+    private final BOSEventProducer bosEventProducer;
+    private final SwingPointRepository swingPointRepository;
+    private final BreakOfStructureRepository breakOfStructureRepository;
+    private final Environment env;
 
-    public boolean checkForBreakOfStructure(CandleEntity candleEntity) {
+    public BreakOfStructureService(BOSEventProducer bosEventProducer, SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env) {
+        this.bosEventProducer = bosEventProducer;
+        this.swingPointRepository = swingPointRepository;
+        this.breakOfStructureRepository = breakOfStructureRepository;
+        this.env = env;
+    }
+
+    public void checkForBreakOfStructure(CandleEntity candleEntity) {
 
         boolean breakOfStructure = false;
+
+        Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(
+                candleEntity.getStockSymbol(), candleEntity.getTimeframe()
+        );
+        if (recentSwingPoint.isPresent()) {
+            SwingPoint recent = recentSwingPoint.get();
+            if (!recent.getConfirmed()) {
+                if (SwingType.valueOf(recent.getSwingType()) == SwingType.HIGH) {
+                    if (priceMovedEnough(candleEntity, recent, false)) {
+                        recent.setConfirmed(true);
+                        swingPointRepository.save(recent);
+                    }
+                } else {
+                    if (priceMovedEnough(candleEntity, recent, true)) {
+                        recent.setConfirmed(true);
+                        swingPointRepository.save(recent);
+                    }
+                }
+            }
+        }
+
 
         List<SwingPoint> swingPoints = swingPointRepository.findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDesc(candleEntity.getStockSymbol(), candleEntity.getTimeframe())
                 .stream().sorted(Comparator.comparing(SwingPoint::getCandleTimestamp)).toList();
         if (swingPoints.size() < 2) {
-            return false; // Not enough swing points to determine a break of structure
+            return;
         }
 
         SwingType lastSwingType = SwingType.valueOf(swingPoints.get(1).getSwingType());
         SwingPoint weakSwingPoint = swingPoints.get(0);
+
         if (lastSwingType == SwingType.HIGH) {
             breakOfStructure = priceMovedEnough(candleEntity, weakSwingPoint, false);
         } else if (lastSwingType == SwingType.LOW) {
             breakOfStructure = priceMovedEnough(candleEntity, weakSwingPoint, true);
         }
 
-        // Check if BOS for this weak and strong swing point already exists
         boolean bosExists = breakOfStructureRepository.existsByWeakSwingPointAndStrongSwingPoint(weakSwingPoint, swingPoints.get(1));
         if (bosExists) {
-            return false;
+            return;
         }
 
         if (breakOfStructure) {
+            SwingPoint strongSwingPoint = swingPoints.get(1);
+            strongSwingPoint.setIsMajor(true);
+            swingPointRepository.save(strongSwingPoint);
             breakOfStructureRepository.save(
                     new BreakOfStructure(
                         candleEntity.getStockSymbol(),
@@ -70,7 +100,13 @@ public class BreakOfStructureService {
                     )
             );
         }
-        return breakOfStructure;
+    }
+
+    public double getBOSThreshold(String timeframe) {
+        String key = "bos.threshold." + timeframe;
+        String value = env.getProperty(key);
+        if (value == null) throw new IllegalArgumentException("No BOS threshold configured for timeframe: " + timeframe);
+        return Double.parseDouble(value);
     }
 
     boolean priceMovedEnough(CandleEntity candleEntity, SwingPoint swingPoint, boolean direction) {
@@ -80,6 +116,6 @@ public class BreakOfStructureService {
         } else {
             priceChange = (swingPoint.getPrice() - candleEntity.getLow()) * 100 / swingPoint.getPrice();
         }
-        return priceChange >= 5;
+        return priceChange >= getBOSThreshold(candleEntity.getTimeframe());
     }
 }

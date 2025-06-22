@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS swing_points (
     price DOUBLE PRECISION,
     swing_type VARCHAR(8), -- HIGH or LOW
     confirmed BOOLEAN DEFAULT FALSE,
+    is_major BOOLEAN DEFAULT FALSE,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, swing_type)
 );
 CREATE INDEX IF NOT EXISTS idx_swing_points_symbol_timeframe_ts

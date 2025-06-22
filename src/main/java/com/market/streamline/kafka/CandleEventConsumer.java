@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.model.CandleEvent;
 import com.market.streamline.plot.GenericPlotExporter;
+import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.CandleRepository;
+import com.market.streamline.repository.SwingPointRepository;
 import com.market.streamline.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -27,6 +29,12 @@ public class CandleEventConsumer {
 
     @Autowired
     private CandleRepository candleRepository;
+
+    @Autowired
+    private SwingPointRepository swingPointRepository;
+
+    @Autowired
+    private BreakOfStructureRepository breakOfStructureRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -62,16 +70,21 @@ public class CandleEventConsumer {
                     candleEvent.getVolume()
             );
             candleRepository.save(candleEntity);
-            swingPointService.checkForSwingPoint(candleEntity);
             breakOfStructureService.checkForBreakOfStructure(candleEntity);
+            swingPointService.checkForSwingPoint(candleEntity);
             liquidityService.invalidateLiquidityZones(candleEntity);
             zoneService.invalidateZones(candleEntity);
             zoneService.updateZoneStrength(candleEntity);
             eventCount++;
             // After all events are processed, export for plotting
             if (eventCount == totalEvents && stockSymbol != null) {
-                genericPlotExporter.exportPlotCsv(stockSymbol, "1D", stockSymbol + "_swing_points.csv");
+                genericPlotExporter.exportPlotCsv(stockSymbol, candleEvent.getTimeframe(), stockSymbol + "_swing_points.csv");
                 System.out.println("Exported plot points for " + stockSymbol);
+                // Reset the repositories
+                candleRepository.deleteAllInBatch();
+                swingPointRepository.deleteAllInBatch();
+                breakOfStructureRepository.deleteAllInBatch();
+                eventCount = 0;
             }
         } catch (Exception e) {
             e.printStackTrace();

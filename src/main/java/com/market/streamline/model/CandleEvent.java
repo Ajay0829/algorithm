@@ -10,6 +10,21 @@ public class CandleEvent {
     private double close;
     private double volume;
 
+    public CandleEvent(String stockSymbol, String timeframe, String candleTimestamp, double open, double high, double low, double close, double volume) {
+        this.stockSymbol = stockSymbol;
+        this.timeframe = timeframe;
+        this.candleTimestamp = candleTimestamp;
+        this.open = open;
+        this.high = high;
+        this.low = low;
+        this.close = close;
+        this.volume = volume;
+    }
+
+    public CandleEvent() {
+
+    }
+
     // Getters and setters
     public String getStockSymbol() { return stockSymbol; }
     public void setStockSymbol(String stockSymbol) { this.stockSymbol = stockSymbol; }
