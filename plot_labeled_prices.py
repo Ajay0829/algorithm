@@ -139,4 +139,20 @@ if 'zone' in df.columns and 'near_point' in df.columns and 'far_point' in df.col
             rect = patches.Rectangle((x0_num, y0), width, height, linewidth=1, edgecolor=color, facecolor=color, alpha=0.2)
             ax.add_patch(rect)
 
+# Draw dotted line connecting all major swing points (highs and lows)
+# if 'is_major' in df.columns:
+#     # Collect all major swing highs and lows
+#     major_highs = df[(df['is_major'] == True) & df['swing_high'].notnull()][['swing_high']]
+#     major_lows = df[(df['is_major'] == True) & df['swing_low'].notnull()][['swing_low']]
+#     # Combine and sort by index (timestamp)
+#     major_points = pd.concat([
+#         pd.DataFrame({'price': major_highs['swing_high']}, index=major_highs.index),
+#         pd.DataFrame({'price': major_lows['swing_low']}, index=major_lows.index)
+#     ]).sort_index()
+#     if not major_points.empty:
+#         x = [date2num(ts) for ts in major_points.index]
+#         y = major_points['price'].values
+#         ax.plot(x, y, linestyle='dotted', color='black', linewidth=2, marker=None, zorder=1)
+
+
 plt.show()

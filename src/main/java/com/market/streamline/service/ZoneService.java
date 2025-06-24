@@ -46,8 +46,8 @@ public class ZoneService {
         List<BreakOfStructure> lowerTimeFrameBosList = breakOfStructureRepository.findByStockSymbolAndTimeframeAndCandleTimestampBetweenOrderByCandleTimestampDesc(
                 bos.getStockSymbol(),
                 lowerTimeframe,
-                from.minusMinutes(120),
-                to.plusMinutes(120)
+                from.minusMinutes(60),
+                to.plusMinutes(60)
         );
 
         if (lowerTimeFrameBosList.isEmpty()) {
@@ -63,9 +63,10 @@ public class ZoneService {
                 lowerTimeframeBOSFinal = lowerTimeFrameBos;
             } else if (Objects.equals(bos.getDirection(), lowerTimeFrameBos.getDirection())){
                 lowerTimeframeBOSFinal = lowerTimeFrameBos;
+                break;
             } else {
-                // Direction doesn't match,
-                System.out.println("Nothing matched for BOS: " + lowerTimeFrameBos.getCandleTimestamp());
+                lowerTimeframeBOSFinal = lowerTimeFrameBos;
+                break;
             }
         }
         if (lowerTimeframeBOSFinal.getId() == null) {

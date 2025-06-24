@@ -31,10 +31,11 @@ public class BOSEventConsumer {
 
             BOSEvent bosEvent = objectMapper.readValue(message, BOSEvent.class);
             Optional<BreakOfStructure> bos = breakOfStructureRepository.
-                    findByStockSymbolAndTimeframeAndCandleTimestamp(
+                    findByStockSymbolAndTimeframeAndCandleTimestampAndDirection(
                         bosEvent.getStockSymbol(),
                         bosEvent.getTimeframe(),
-                        bosEvent.getCandleTimestamp()
+                        bosEvent.getCandleTimestamp(),
+                        bosEvent.getDirection()
                     );
 
             if (bos.isEmpty()) {

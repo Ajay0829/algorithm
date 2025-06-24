@@ -30,33 +30,38 @@ public class BreakOfStructureService {
         this.env = env;
     }
 
-    public void checkForBreakOfStructure(CandleEntity candleEntity) {
+    public void checkForBreakOfStructure(CandleEntity candleEntity, boolean isHighCheck) {
 
         boolean breakOfStructure = false;
 
-        Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(
+        Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDescIdDesc(
                 candleEntity.getStockSymbol(), candleEntity.getTimeframe()
         );
         if (recentSwingPoint.isPresent()) {
             SwingPoint recent = recentSwingPoint.get();
             if (!recent.getConfirmed()) {
-                if (SwingType.valueOf(recent.getSwingType()) == SwingType.HIGH) {
-                    if (priceMovedEnough(candleEntity, recent, false)) {
-                        recent.setConfirmed(true);
-                        swingPointRepository.save(recent);
+                if (isHighCheck) {
+                    if (recent.getSwingType().equals(SwingType.LOW.name())) {
+                        if (priceMovedEnough(candleEntity, recent, true)) {
+                            recent.setConfirmed(true);
+                            swingPointRepository.save(recent);
+                        }
                     }
                 } else {
-                    if (priceMovedEnough(candleEntity, recent, true)) {
-                        recent.setConfirmed(true);
-                        swingPointRepository.save(recent);
+                    if (recent.getSwingType().equals(SwingType.HIGH.name())) {
+                        if (priceMovedEnough(candleEntity, recent, false)) {
+                            recent.setConfirmed(true);
+                            swingPointRepository.save(recent);
+                        }
                     }
                 }
             }
         }
 
 
-        List<SwingPoint> swingPoints = swingPointRepository.findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDesc(candleEntity.getStockSymbol(), candleEntity.getTimeframe())
-                .stream().sorted(Comparator.comparing(SwingPoint::getCandleTimestamp)).toList();
+        List<SwingPoint> swingPoints = swingPointRepository.findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDescIdDesc(candleEntity.getStockSymbol(), candleEntity.getTimeframe())
+                .stream().sorted(Comparator.comparing(SwingPoint::getCandleTimestamp)
+                        .thenComparing(SwingPoint::getId)).toList();
         if (swingPoints.size() < 2) {
             return;
         }
@@ -64,9 +69,9 @@ public class BreakOfStructureService {
         SwingType lastSwingType = SwingType.valueOf(swingPoints.get(1).getSwingType());
         SwingPoint weakSwingPoint = swingPoints.get(0);
 
-        if (lastSwingType == SwingType.HIGH) {
+        if (lastSwingType == SwingType.HIGH && !isHighCheck) {
             breakOfStructure = priceMovedEnough(candleEntity, weakSwingPoint, false);
-        } else if (lastSwingType == SwingType.LOW) {
+        } else if (lastSwingType == SwingType.LOW && isHighCheck) {
             breakOfStructure = priceMovedEnough(candleEntity, weakSwingPoint, true);
         }
 

@@ -73,8 +73,21 @@ public class CandleEventConsumer {
                     candleEvent.getVolume()
             );
             candleRepository.save(candleEntity);
-            breakOfStructureService.checkForBreakOfStructure(candleEntity);
-            swingPointService.checkForSwingPoint(candleEntity);
+            if (candleEntity.getOpen() >= candleEntity.getClose()) {
+                swingPointService.confirmSwingPointIfAny(candleEntity, true);
+                breakOfStructureService.checkForBreakOfStructure(candleEntity, true);
+                swingPointService.checkForSwingPoint(candleEntity, true);
+                swingPointService.confirmSwingPointIfAny(candleEntity, false);
+                breakOfStructureService.checkForBreakOfStructure(candleEntity, false);
+                swingPointService.checkForSwingPoint(candleEntity, false);
+            } else {
+                swingPointService.confirmSwingPointIfAny(candleEntity, false);
+                breakOfStructureService.checkForBreakOfStructure(candleEntity, false);
+                swingPointService.checkForSwingPoint(candleEntity, false);
+                swingPointService.confirmSwingPointIfAny(candleEntity, true);
+                breakOfStructureService.checkForBreakOfStructure(candleEntity, true);
+                swingPointService.checkForSwingPoint(candleEntity, true);
+            }
             liquidityService.invalidateLiquidityZones(candleEntity);
             zoneService.invalidateZones(candleEntity);
             zoneService.updateZoneStrength(candleEntity);
@@ -83,7 +96,6 @@ public class CandleEventConsumer {
             if (eventCount == totalEvents && stockSymbol != null) {
                 genericPlotExporter.exportPlotCsv(stockSymbol, candleEvent.getTimeframe(), stockSymbol + "_swing_points.csv");
                 System.out.println("Exported plot points for " + stockSymbol);
-                // Reset the repositories
                 candleRepository.deleteAllInBatch();
                 swingPointRepository.deleteAllInBatch();
                 breakOfStructureRepository.deleteAllInBatch();
