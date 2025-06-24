@@ -5,14 +5,14 @@ import subprocess
 url = "http://localhost:8080/api/batch/run"
 
 # Define the stock symbol
-stockSymbol = "GOOGL"  # Set your desired stock symbol here
+stockSymbol = "NVDA"  # Set your desired stock symbol here
 
 # JSON payload with parameters
 payload = {
     "stockSymbol": stockSymbol,
-    "timeframe": "1h",   # or "15m", "1d"
-    "from": "2025-03-01",
-    "to": "2025-04-30"
+    "timeframe": "1d",   # or "15m", "1d"
+    "from": "2024-07-01",
+    "to": "2025-05-01"
 }
 
 # Make the POST request
