@@ -49,7 +49,6 @@ public class SwingPointService {
                 .collect(Collectors.toList());
 
         Optional<SwingPoint> swingPoint = detectSwingPoint(sortedCandles);
-
         return swingPoint.flatMap(this::saveAndGet);
     }
 
@@ -114,7 +113,6 @@ public class SwingPointService {
                     }
                 }
                 return Optional.empty();
-
             } else if (shouldReuseExistingSwingPoint(recent, sp)) { // Same swing type, check if we can reuse
                 return Optional.of(recent);
             } else { // If not reuse, delete the recent one and save the new swing point

@@ -38,5 +38,101 @@ public class Zone {
 
     @Column(name = "strength")
     private Double strength;
+
+    public Zone(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType, Double nearPoint, Double farPoint, String type, Double volume, Double strength) {
+        this.stockSymbol = stockSymbol;
+        this.timeframe = timeframe;
+        this.candleTimestamp = candleTimestamp;
+        this.zoneType = zoneType;
+        this.nearPoint = nearPoint;
+        this.farPoint = farPoint;
+        this.type = type;
+        this.volume = volume;
+        this.strength = strength;
+    }
+
+    public Zone() {
+
+    }
+
+    public String getStockSymbol() {
+        return stockSymbol;
+    }
+
+    public void setStockSymbol(String stockSymbol) {
+        this.stockSymbol = stockSymbol;
+    }
+
+    public String getTimeframe() {
+        return timeframe;
+    }
+
+    public void setTimeframe(String timeframe) {
+        this.timeframe = timeframe;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public LocalDateTime getCandleTimestamp() {
+        return candleTimestamp;
+    }
+
+    public void setCandleTimestamp(LocalDateTime candleTimestamp) {
+        this.candleTimestamp = candleTimestamp;
+    }
+
+    public String getZoneType() {
+        return zoneType;
+    }
+
+    public void setZoneType(String zoneType) {
+        this.zoneType = zoneType;
+    }
+
+    public Double getNearPoint() {
+        return nearPoint;
+    }
+
+    public void setNearPoint(Double nearPoint) {
+        this.nearPoint = nearPoint;
+    }
+
+    public Double getFarPoint() {
+        return farPoint;
+    }
+
+    public void setFarPoint(Double farPoint) {
+        this.farPoint = farPoint;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public Double getVolume() {
+        return volume;
+    }
+
+    public void setVolume(Double volume) {
+        this.volume = volume;
+    }
+
+    public Double getStrength() {
+        return strength;
+    }
+
+    public void setStrength(Double strength) {
+        this.strength = strength;
+    }
 }
 

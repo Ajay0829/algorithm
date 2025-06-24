@@ -7,6 +7,7 @@ import com.market.streamline.plot.GenericPlotExporter;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.SwingPointRepository;
+import com.market.streamline.repository.ZoneRepository;
 import com.market.streamline.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -47,6 +48,8 @@ public class CandleEventConsumer {
     private LiquidityService liquidityService;
     @Autowired
     private ZoneService zoneService;
+    @Autowired
+    private ZoneRepository zoneRepository;
 
     public void setTotalEvents(int total, String symbol) {
         this.totalEvents = total;
@@ -84,6 +87,7 @@ public class CandleEventConsumer {
                 candleRepository.deleteAllInBatch();
                 swingPointRepository.deleteAllInBatch();
                 breakOfStructureRepository.deleteAllInBatch();
+                zoneRepository.deleteAllInBatch();
                 eventCount = 0;
             }
         } catch (Exception e) {

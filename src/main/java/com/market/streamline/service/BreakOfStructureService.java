@@ -84,7 +84,7 @@ public class BreakOfStructureService {
                         candleEntity.getStockSymbol(),
                         candleEntity.getTimeframe(),
                         candleEntity.getCandleTimestamp(),
-                        lastSwingType == SwingType.HIGH ? "BULLISH" : "BEARISH",
+                        lastSwingType == SwingType.HIGH ? "BEARISH" : "BULLISH",
                         lastSwingType == SwingType.HIGH ? "LOW" : "HIGH",
                         weakSwingPoint,
                         swingPoints.get(1)
@@ -94,7 +94,7 @@ public class BreakOfStructureService {
                     new BOSEvent(
                         candleEntity.getStockSymbol(),
                         candleEntity.getTimeframe(),
-                        lastSwingType == SwingType.HIGH ? "BULLISH" : "BEARISH",
+                        lastSwingType == SwingType.HIGH ? "BEARISH" : "BULLISH",
                         candleEntity.getCandleTimestamp(),
                         weakSwingPoint
                     )

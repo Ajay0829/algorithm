@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "swing_points", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"stock_symbol", "timeframe", "candle_timestamp"})
+        @UniqueConstraint(columnNames = {"stock_symbol", "timeframe", "candle_timestamp", "swing_type"})
 })
 public class SwingPoint {
     @Id

@@ -21,6 +21,8 @@ public class Candle {
     @JsonProperty("v")
     private double volume;
 
+    private String timeframe;
+
     public Candle(long timestamp, double open, double high, double low, double close, double volume) {
         this.timestamp = timestamp;
         this.open = open;
@@ -78,4 +80,13 @@ public class Candle {
     public void setVolume(double volume) {
         this.volume = volume;
     }
+
+    public String getTimeframe() {
+        return timeframe;
+    }
+
+    public void setTimeframe(String timeframe) {
+        this.timeframe = timeframe;
+    }
 }
+
