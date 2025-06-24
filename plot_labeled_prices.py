@@ -2,6 +2,8 @@ import sys
 import pandas as pd
 import mplfinance as mpf
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from matplotlib.dates import date2num
 
 if len(sys.argv) > 1:
     stock_symbol = sys.argv[1]
@@ -118,4 +120,23 @@ if 'break_of_structure' in df.columns:
                 else:
                     y = row['close']  # fallback
                     ax.hlines(y, df.index[swing_idx], df.index[bos_idx], colors='black', linewidth=2, linestyles='dashed', label='BOS')
+
+# Draw rectangles for demand/supply zones
+if 'zone' in df.columns and 'near_point' in df.columns and 'far_point' in df.columns:
+    for idx, row in df.iterrows():
+        if pd.notnull(row.get('zone')) and row.get('zone') != '':
+            start_idx = df.index.get_loc(idx)
+            end_idx = min(start_idx + 10, len(df.index) - 1)
+            x0 = df.index[start_idx]
+            x1 = df.index[end_idx]
+            y0 = min(row['near_point'], row['far_point'])
+            y1 = max(row['near_point'], row['far_point'])
+            x0_num = date2num(x0.to_pydatetime() if hasattr(x0, 'to_pydatetime') else x0)
+            x1_num = date2num(x1.to_pydatetime() if hasattr(x1, 'to_pydatetime') else x1)
+            width = x1_num - x0_num
+            height = y1 - y0
+            color = 'green' if row['zone'] == 'DEMAND' else 'red'
+            rect = patches.Rectangle((x0_num, y0), width, height, linewidth=1, edgecolor=color, facecolor=color, alpha=0.2)
+            ax.add_patch(rect)
+
 plt.show()

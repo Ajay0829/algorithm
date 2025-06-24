@@ -8,6 +8,7 @@ public class PolygonAggregatesResponse {
     private int resultsCount;
     private List<Candle> results;
     private String status;
+    private String next_url;
 
     // getters and setters
     public String getTicker() { return ticker; }
@@ -20,4 +21,7 @@ public class PolygonAggregatesResponse {
     public void setResults(List<Candle> results) { this.results = results; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getNext_url() { return next_url; }
+    public void setNext_url(String next_url) { this.next_url = next_url; }
 }
+

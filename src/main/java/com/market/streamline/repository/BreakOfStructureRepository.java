@@ -5,6 +5,7 @@ import com.market.streamline.entity.SwingPoint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,4 +18,9 @@ public interface BreakOfStructureRepository extends JpaRepository<BreakOfStructu
     boolean existsByWeakSwingPointAndStrongSwingPoint(SwingPoint swingPoint, SwingPoint weakSwingPoint);
 
     Optional<BreakOfStructure> findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(String stockSymbol, String timeframe);
+
+    Optional<BreakOfStructure> findByStockSymbolAndTimeframeAndCandleTimestamp(String stockSymbol, String timeframe, java.time.LocalDateTime candleTimestamp);
+
+    List<BreakOfStructure> findByStockSymbolAndTimeframeAndCandleTimestampBetweenOrderByCandleTimestampDesc(
+            String stockSymbol, String timeframe, LocalDateTime from, LocalDateTime to);
 }
