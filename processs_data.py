@@ -10,9 +10,9 @@ stockSymbol = "NVDA"  # Set your desired stock symbol here
 # JSON payload with parameters
 payload = {
     "stockSymbol": stockSymbol,
-    "timeframe": "1d",   # or "15m", "1d"
-    "from": "2024-07-01",
-    "to": "2025-05-01"
+    "timeframe": "1h",   # or "15m", "1d"
+    "from": "2024-09-01",
+    "to": "2024-12-01"
 }
 
 # Make the POST request

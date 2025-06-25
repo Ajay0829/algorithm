@@ -75,10 +75,12 @@ CREATE TABLE IF NOT EXISTS zones (
     candle_timestamp TIMESTAMP NOT NULL,
     near_point DOUBLE PRECISION,
     far_point DOUBLE PRECISION,
-    type VARCHAR(16), -- SUPPLY, DEMAND
+    type VARCHAR(16),
     volume DOUBLE PRECISION,
     strength DOUBLE PRECISION,
-    UNIQUE (stock_symbol, timeframe, candle_timestamp, type)
+    strong_swing_point_id INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
+    zone_type VARCHAR(16), -- SUPPLY, DEMAND (if you use this instead of type)
+    UNIQUE (stock_symbol, timeframe, candle_timestamp, zone_type)
 );
 CREATE INDEX IF NOT EXISTS idx_zones_symbol_timeframe_ts
     ON zones (stock_symbol, timeframe, candle_timestamp);
@@ -153,4 +155,3 @@ CREATE TABLE IF NOT EXISTS candles (
 );
 CREATE INDEX IF NOT EXISTS idx_candles_symbol_timeframe_ts
     ON candles (stock_symbol, timeframe, candle_timestamp);
-

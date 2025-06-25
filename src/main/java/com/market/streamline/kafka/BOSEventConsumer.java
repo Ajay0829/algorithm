@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.market.streamline.entity.BreakOfStructure;
 import com.market.streamline.model.BOSEvent;
 import com.market.streamline.repository.BreakOfStructureRepository;
+import com.market.streamline.service.ImpulseZoneService;
 import com.market.streamline.service.TrendService;
 import com.market.streamline.service.ZoneService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,13 +23,15 @@ public class BOSEventConsumer {
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
     @Autowired
     private TrendService trendService;
+
+    @Autowired
+    private ImpulseZoneService impulseZoneService;
     @Autowired
     private BreakOfStructureRepository breakOfStructureRepository;
 
     @KafkaListener(topics = "bos-event-topic", groupId = "bos-event-group")
     public void listen(String message) {
         try {
-
             BOSEvent bosEvent = objectMapper.readValue(message, BOSEvent.class);
             Optional<BreakOfStructure> bos = breakOfStructureRepository.
                     findByStockSymbolAndTimeframeAndCandleTimestampAndDirection(
@@ -43,8 +46,6 @@ public class BOSEventConsumer {
                 return;
             }
             BreakOfStructure breakOfStructure = bos.get();
-            // Process the BOSEvent to identify zones
-            zoneService.identifyZone(breakOfStructure);
             trendService.updateTrend(breakOfStructure);
 
 
