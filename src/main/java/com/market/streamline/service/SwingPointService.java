@@ -4,6 +4,8 @@ import com.market.common.SwingType;
 import com.market.streamline.entity.BreakOfStructure;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.entity.SwingPoint;
+import com.market.streamline.kafka.SwingPointEventProducer;
+import com.market.streamline.model.SwingPointEvent;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.SwingPointRepository;
@@ -23,12 +25,14 @@ public class SwingPointService {
     private final CandleRepository candleRepository;
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
+    private final SwingPointEventProducer swingPointEventProducer;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
+        this.swingPointEventProducer = swingPointEventProducer;
     }
 
     public void confirmSwingPointIfAny(CandleEntity candleEntity, boolean isHighCheck) {
@@ -112,8 +116,8 @@ public class SwingPointService {
 
             return handleRecentSwingPoint(sp, recent, isHighCheck);
         } else {
-            // TODO: Send event for new swing point
             swingPointRepository.save(sp);
+            swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
             return Optional.of(sp);
         }
     }
@@ -128,12 +132,14 @@ public class SwingPointService {
                 } else {
                     swingPointRepository.delete(recent);
                     swingPointRepository.save(sp);
+                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
                 }
             } else {
                 // recent is swing low
                 if (priceMovedEnough(recent.getPrice(), sp.getPrice(), sp.getTimeframe(), true)) {
                     swingPointRepository.save(sp);
+                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
                 }
             }
@@ -145,12 +151,14 @@ public class SwingPointService {
                 } else {
                     swingPointRepository.delete(recent);
                     swingPointRepository.save(sp);
+                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
                 }
             } else {
                 // recent is swing high
                 if (priceMovedEnough(recent.getPrice(), sp.getPrice(), sp.getTimeframe(), false)) {
                     swingPointRepository.save(sp);
+                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
                 }
             }

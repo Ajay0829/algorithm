@@ -28,6 +28,8 @@ public class ZoneService {
         this.candleRepository = candleRepository;
     }
 
+    // Instead of using BOS, use impulse to identify zones
+    // Use BOS on the lower timeframe to identify zones on the higher timeframe
     public void identifyZone(BreakOfStructure bos) {
         // Logic to identify a zone based on the break of structure.
 
@@ -77,76 +79,82 @@ public class ZoneService {
     }
 
     private Zone getZone(BreakOfStructure bos, BreakOfStructure bosLowerTimeframe) {
-        double zoneNearPoint, zoneFarPoint, zoneStrength, zoneVolume;
-        String zoneType;
-
-        if (bos.getDirection().equals("BULLISH")) {
-            zoneNearPoint = bosLowerTimeframe.getWeakSwingPoint().getPrice();
-            zoneFarPoint = bosLowerTimeframe.getStrongSwingPoint().getPrice();
-            zoneType = "DEMAND";
-            zoneStrength = 0.0;
-            zoneVolume = 0.0;
-        } else {
-            zoneNearPoint = bosLowerTimeframe.getWeakSwingPoint().getPrice();
-            zoneFarPoint = bosLowerTimeframe.getStrongSwingPoint().getPrice();
-            zoneType = "SUPPLY";
-            zoneStrength = 0.0;
-            zoneVolume = 0.0;
-        }
-
-        Zone zone = new Zone(
+        double zoneStrength = 0.0, zoneVolume = 0.0;
+        CandleEntity candleEntity = mapToHigherTimeframe(bosLowerTimeframe.getStrongSwingPoint(), bos);
+        boolean isDemand = bos.getDirection().equals("BULLISH");
+        return new Zone(
                 bos.getStockSymbol(),
                 bos.getTimeframe(),
-                mapToHigherTimeframe(bosLowerTimeframe.getStrongSwingPoint().getCandleTimestamp(), bos),
-                zoneType,
-                zoneNearPoint,
-                zoneFarPoint,
+                candleEntity.getCandleTimestamp(),
+                isDemand ? "DEMAND" : "SUPPLY",
+                isDemand ? candleEntity.getHigh() : candleEntity.getLow(),
+                isDemand ? candleEntity.getLow() : candleEntity.getHigh(),
                 "ACTIVE",
                 zoneVolume,
-                zoneStrength
+                zoneStrength,
+                null // to be updated.
+
         );
-        return zone;
     }
 
     // Helper to map a lower timeframe candle timestamp to the higher timeframe candle timestamp that contains it
-    private LocalDateTime mapToHigherTimeframe(LocalDateTime lowerTimestamp, BreakOfStructure bos) {
+    private CandleEntity mapToHigherTimeframe(SwingPoint ltfSwingPoint, BreakOfStructure bos) {
+        LocalDateTime ltfCandleTimestamp = ltfSwingPoint.getCandleTimestamp();
+        CandleEntity ltfCandle = candleRepository.findTopByStockSymbolAndTimeframeAndCandleTimestampOrderByCandleTimestampDesc(
+                bos.getStockSymbol(),
+                ltfSwingPoint.getTimeframe(),
+                ltfCandleTimestamp
+        );
         String higherTimeframe = bos.getTimeframe();
-        CandleEntity beforeCandle = candleRepository.findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanEqualOrderByCandleTimestampDesc(
+        CandleEntity enclosingCandle = candleRepository.findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanEqualOrderByCandleTimestampDesc(
                 bos.getStockSymbol(),
                 higherTimeframe,
-                lowerTimestamp
+                ltfCandleTimestamp
         );
 
-        CandleEntity afterCandle = candleRepository.findTopByStockSymbolAndTimeframeAndCandleTimestampGreaterThanOrderByCandleTimestampAsc(
-                bos.getStockSymbol(),
-                higherTimeframe,
-                lowerTimestamp
-        );
-
-        if (encloses(lowerTimestamp, beforeCandle.getCandleTimestamp(), higherTimeframe)) {
-            return beforeCandle.getCandleTimestamp();
-        } else if (encloses(lowerTimestamp, afterCandle.getCandleTimestamp(), higherTimeframe)) {
-            return afterCandle.getCandleTimestamp();
-        } else {
-            throw new IllegalArgumentException("No higher timeframe candle found for the given lower timeframe timestamp.");
+        if (enclosingCandle == null) {
+            throw new IllegalArgumentException("No enclosing HTF candle found.");
         }
 
+        CandleEntity previousCandle = candleRepository.findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanOrderByCandleTimestampDesc(
+                bos.getStockSymbol(),
+                higherTimeframe,
+                ltfCandleTimestamp
+        );
+
+        if (previousCandle == null) {
+            throw new IllegalArgumentException("No previous HTF candle found before impulse.");
+        }
+
+        // choose between previousCandle and enclosingCandle based on the logic
+
+        if (contains(ltfCandle, enclosingCandle) && contains(ltfCandle, previousCandle)) {
+            if (bos.getDirection().equals("BULLISH")) {
+                // Find the candle with lowest high for demand zone
+                if (enclosingCandle.getHigh() <= previousCandle.getHigh()) {
+                    return enclosingCandle;
+                } else {
+                    return previousCandle;
+                }
+            } else {
+                if (enclosingCandle.getLow() >= previousCandle.getLow()) {
+                    return enclosingCandle;
+                } else {
+                    return previousCandle;
+                }
+            }
+        } else if (contains(ltfCandle, enclosingCandle)) {
+            return enclosingCandle;
+        } else if (contains(ltfCandle, previousCandle)) {
+            return previousCandle;
+        } else {
+            // Ideally this should not happen, but if it does, return the enclosingCandle
+            return enclosingCandle;
+        }
     }
 
-    boolean encloses(LocalDateTime lowerTimestamp, LocalDateTime higherTimestamp, String higherTimeframe) {
-        // Assuming higherTimestamp is the start of the higher timeframe candle
-        long durationInMinutes;
-        if (higherTimeframe.equals("1h")) {
-            durationInMinutes = 60;
-        } else if (higherTimeframe.equals("15m")) {
-            durationInMinutes = 15;
-        } else if (higherTimeframe.equals("1d")) {
-            durationInMinutes = 1440; // 24 hours
-        } else {
-            throw new IllegalArgumentException("Unsupported higher timeframe: " + higherTimeframe);
-        }
-
-        return lowerTimestamp.isAfter(higherTimestamp.minusMinutes(1)) && lowerTimestamp.isBefore(higherTimestamp.plusMinutes(durationInMinutes));
+    boolean contains(CandleEntity ltfCandle, CandleEntity htfCandle) {
+        return (ltfCandle.getLow() >= htfCandle.getLow() && ltfCandle.getHigh() <= htfCandle.getHigh());
     }
 
     public boolean invalidateZones(CandleEntity candleEntity) {

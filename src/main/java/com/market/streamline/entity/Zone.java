@@ -39,7 +39,11 @@ public class Zone {
     @Column(name = "strength")
     private Double strength;
 
-    public Zone(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType, Double nearPoint, Double farPoint, String type, Double volume, Double strength) {
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "strong_swing_point_id")
+    private SwingPoint strongSwingPoint;
+
+    public Zone(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType, Double nearPoint, Double farPoint, String type, Double volume, Double strength, SwingPoint strongSwingPoint) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.candleTimestamp = candleTimestamp;
@@ -49,6 +53,7 @@ public class Zone {
         this.type = type;
         this.volume = volume;
         this.strength = strength;
+        this.strongSwingPoint = strongSwingPoint;
     }
 
     public Zone() {
@@ -134,5 +139,12 @@ public class Zone {
     public void setStrength(Double strength) {
         this.strength = strength;
     }
-}
 
+    public SwingPoint getStrongSwingPoint() {
+        return strongSwingPoint;
+    }
+
+    public void setStrongSwingPoint(SwingPoint strongSwingPoint) {
+        this.strongSwingPoint = strongSwingPoint;
+    }
+}

@@ -27,8 +27,18 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
         String stockSymbol, String timeframe, LocalDateTime timestamp
     );
 
+    CandleEntity findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanOrderByCandleTimestampDesc(
+            String stockSymbol, String timeframe, LocalDateTime timestamp
+    );
+
+    CandleEntity findTopByStockSymbolAndTimeframeAndCandleTimestampOrderByCandleTimestampDesc(
+        String stockSymbol, String timeframe, LocalDateTime timestamp
+    );
+
     // Find the earliest candle after the given timestamp
     CandleEntity findTopByStockSymbolAndTimeframeAndCandleTimestampGreaterThanOrderByCandleTimestampAsc(
         String stockSymbol, String timeframe, LocalDateTime timestamp
     );
+
+    boolean existsByStockSymbolAndTimeframe(String stockSymbol, String timeframe);
 }
