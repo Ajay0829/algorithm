@@ -94,6 +94,25 @@ fig, axes = mpf.plot(
 )
 ax = axes[0]
 
+# Plot trend background color by segment
+if 'trend_type' in df.columns:
+    prev_trend = None
+    seg_start = None
+    for i, (idx, row) in enumerate(df.iterrows()):
+        trend = row['trend_type']
+        if trend != prev_trend:
+            if prev_trend is not None and seg_start is not None:
+                seg_end = df.index[i-1]
+                color = 'green' if prev_trend == 'UP' else ('red' if prev_trend == 'DOWN' else 'yellow')
+                ax.axvspan(date2num(seg_start), date2num(seg_end), color=color, alpha=0.12, zorder=0)
+            seg_start = idx
+            prev_trend = trend
+    # Shade the last segment
+    if prev_trend is not None and seg_start is not None:
+        seg_end = df.index[-1]
+        color = 'green' if prev_trend == 'UP' else ('red' if prev_trend == 'DOWN' else 'yellow')
+        ax.axvspan(date2num(seg_start), date2num(seg_end), color=color, alpha=0.12, zorder=0)
+
 # Draw horizontal lines for BOS events from swing point to BOS candle
 if 'break_of_structure' in df.columns:
     for idx, row in df.iterrows():

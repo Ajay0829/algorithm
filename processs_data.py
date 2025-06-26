@@ -2,17 +2,17 @@ import requests
 import subprocess
 
 # API endpoint URL
-url = "http://localhost:8080/api/batch/run"
+url = "http://localhost:8081/api/batch/run"
 
 # Define the stock symbol
-stockSymbol = "NVDA"  # Set your desired stock symbol here
+stockSymbol = "AMD"  # Set your desired stock symbol here
 
 # JSON payload with parameters
 payload = {
     "stockSymbol": stockSymbol,
-    "timeframe": "1h",   # or "15m", "1d"
-    "from": "2024-09-01",
-    "to": "2024-12-01"
+    "timeframe": "1d",   # or "15m", "1d"
+    "from": "2024-06-01",
+    "to": "2025-03-01"
 }
 
 # Make the POST request

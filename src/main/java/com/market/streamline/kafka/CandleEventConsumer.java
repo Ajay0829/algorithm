@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.model.CandleEvent;
 import com.market.streamline.plot.GenericPlotExporter;
-import com.market.streamline.repository.BreakOfStructureRepository;
-import com.market.streamline.repository.CandleRepository;
-import com.market.streamline.repository.SwingPointRepository;
-import com.market.streamline.repository.ZoneRepository;
+import com.market.streamline.repository.*;
 import com.market.streamline.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -50,6 +47,10 @@ public class CandleEventConsumer {
     private ZoneService zoneService;
     @Autowired
     private ZoneRepository zoneRepository;
+    @Autowired
+    private TrendService trendService;
+    @Autowired
+    private TrendRepository trendRepository;
 
     public void setTotalEvents(int total, String symbol) {
         this.totalEvents = total;
@@ -88,6 +89,7 @@ public class CandleEventConsumer {
                 breakOfStructureService.checkForBreakOfStructure(candleEntity, true);
                 swingPointService.checkForSwingPoint(candleEntity, true);
             }
+            trendService.updateTrendStrength(candleEntity);
             liquidityService.invalidateLiquidityZones(candleEntity);
             zoneService.invalidateZones(candleEntity);
             zoneService.updateZoneStrength(candleEntity);
@@ -100,6 +102,7 @@ public class CandleEventConsumer {
                 swingPointRepository.deleteAllInBatch();
                 breakOfStructureRepository.deleteAllInBatch();
                 zoneRepository.deleteAllInBatch();
+                trendRepository.deleteAllInBatch();
                 eventCount = 0;
             }
         } catch (Exception e) {
