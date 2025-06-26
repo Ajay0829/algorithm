@@ -44,9 +44,6 @@ public class SwingPointEventConsumer {
                 impulseZoneService.detectHTFZone(swingPoint);
             }
 
-            // update the strength of current trend
-            trendService.updateTrendStrength(swingPoint);
-
             // check if the swing point is liquidity sweep
             liquidityService.checkLiquiditySweep(swingPoint);
 

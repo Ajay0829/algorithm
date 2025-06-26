@@ -27,7 +27,7 @@ public class SwingPoint {
     @Column(name = "price")
     private Double price;
 
-    @Column
+    @Column(name = "confirmed")
     private Boolean confirmed = false;
 
     @Column(name = "is_major")

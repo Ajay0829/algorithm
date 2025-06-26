@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS trends (
     candle_timestamp TIMESTAMP NOT NULL,
     type VARCHAR(16), -- e.g., UP, DOWN, SIDEWAYS
     strength DOUBLE PRECISION,
+    strong_swing_point_id INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     UNIQUE (stock_symbol, timeframe, candle_timestamp)
 );
 CREATE INDEX IF NOT EXISTS idx_trends_symbol_timeframe_ts

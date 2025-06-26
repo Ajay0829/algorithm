@@ -1,13 +1,7 @@
 package com.market.streamline.plot;
 
-import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.SwingPoint;
-import com.market.streamline.entity.BreakOfStructure;
-import com.market.streamline.entity.Zone;
-import com.market.streamline.repository.CandleRepository;
-import com.market.streamline.repository.SwingPointRepository;
-import com.market.streamline.repository.BreakOfStructureRepository;
-import com.market.streamline.repository.ZoneRepository;
+import com.market.streamline.entity.*;
+import com.market.streamline.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +24,8 @@ public class GenericPlotExporter {
     private BreakOfStructureRepository breakOfStructureRepository;
     @Autowired
     private ZoneRepository zoneRepository;
+    @Autowired
+    private TrendRepository trendRepository;
 
     public void exportPlotCsv(String stockSymbol, String timeframe, String outputPath) {
         List<CandleEntity> candles = candleRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
@@ -54,11 +50,12 @@ public class GenericPlotExporter {
                 .map(sp -> getLocalDateTimeFromCandleTimestamp(sp.getCandleTimestamp()))
                 .collect(Collectors.toSet());
 
-        Map<String, Zone> zoneData = zones.stream()
-                .collect(Collectors.toMap(
-                        zone -> getLocalDateTimeFromCandleTimestamp(zone.getCandleTimestamp()),
-                        zone -> zone
+        Map<String, List<Zone>> zoneData = zones.stream()
+                .collect(Collectors.groupingBy(
+                        zone -> getLocalDateTimeFromCandleTimestamp(zone.getCandleTimestamp())
                 ));
+
+        List<Trend> trends = trendRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
 
         // Fetch all BOS events for this symbol/timeframe
         List<BreakOfStructure> bosEvents = breakOfStructureRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
@@ -78,7 +75,7 @@ public class GenericPlotExporter {
                 ));
 
         try (FileWriter writer = new FileWriter(outputPath)) {
-            writer.write("timestamp,open,high,low,close,volume,swing_high,swing_low,is_major,break_of_structure,type,zone,near_point,far_point\n");
+            writer.write("timestamp,open,high,low,close,volume,swing_high,swing_low,is_major,break_of_structure,type,zone,near_point,far_point,trend_type\n");
             for (CandleEntity candle : candles) {
                 String ts = getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp());
                 String open = String.format("%.2f", candle.getOpen());
@@ -91,12 +88,27 @@ public class GenericPlotExporter {
                 String isMajor = majorSwingHighDates.contains(ts) ? "true" : (majorSwingLowDates.contains(ts) ? "true" : "false");
                 String breakOfStructure = bosToWeakSwing.getOrDefault(getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp()), "");
                 String type = bosToSwingType.getOrDefault(getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp()), "");
-                Zone zone = zoneData.getOrDefault(getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp()), new Zone());
-                String zoneType = zone.getType() != null ? zone.getZoneType() : "";
-                String nearPoint = zone.getNearPoint() != null ? String.format("%.2f", zone.getNearPoint()) : "";
-                String farPoint = zone.getFarPoint() != null ? String.format("%.2f", zone.getFarPoint()) : "";
+                List<Zone> zoneList = zoneData.getOrDefault(getLocalDateTimeFromCandleTimestamp(candle.getCandleTimestamp()), List.of());
+                String zoneType = "";
+                String nearPoint = "";
+                String farPoint = "";
+                if (zoneList.size() == 1) {
+                    Zone firstZone = zoneList.get(0);
+                    zoneType = firstZone.getZoneType() != null ? firstZone.getZoneType() : "";
+                    nearPoint = firstZone.getNearPoint() != null ? String.format("%.2f", firstZone.getNearPoint()) : "";
+                    farPoint = firstZone.getFarPoint() != null ? String.format("%.2f", firstZone.getFarPoint()) : "";
+                }
+                // Find latest trend from trends list before or at candle timestamp
+                Trend latestTrend = null;
+                for (Trend t : trends) {
+                    if ((t.getCandleTimestamp().isBefore(candle.getCandleTimestamp()) || t.getCandleTimestamp().isEqual(candle.getCandleTimestamp())) &&
+                        (latestTrend == null || t.getCandleTimestamp().isAfter(latestTrend.getCandleTimestamp()))) {
+                        latestTrend = t;
+                    }
+                }
+                String trendType = latestTrend != null ? latestTrend.getType() : "SIDEWAYS";
                 writer.write(String.join(",",
-                        ts, open, high, low, close, volume, swingHigh, swingLow, isMajor, breakOfStructure, type, zoneType, nearPoint, farPoint
+                        ts, open, high, low, close, volume, swingHigh, swingLow, isMajor, breakOfStructure, type, zoneType, nearPoint, farPoint, trendType
                 ) + "\n");
             }
         } catch (Exception e) {
@@ -109,4 +121,3 @@ public class GenericPlotExporter {
         return timestamp.atZone(ZoneId.systemDefault()).toLocalDateTime().format(formatter);
     }
 }
-
