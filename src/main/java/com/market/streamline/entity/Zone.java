@@ -39,11 +39,17 @@ public class Zone {
     @Column(name = "strength")
     private Double strength;
 
+    @Column(name = "no_of_taps")
+    private Integer noOfTaps;
+
+    @Column(name = "identified_at")
+    private LocalDateTime identifiedAt;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "strong_swing_point_id")
     private SwingPoint strongSwingPoint;
 
-    public Zone(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType, Double nearPoint, Double farPoint, String type, Double volume, Double strength, SwingPoint strongSwingPoint) {
+    public Zone(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType, Double nearPoint, Double farPoint, String type, Double volume, Double strength, SwingPoint strongSwingPoint, Integer noOfTaps, LocalDateTime identifiedAt) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.candleTimestamp = candleTimestamp;
@@ -54,6 +60,8 @@ public class Zone {
         this.volume = volume;
         this.strength = strength;
         this.strongSwingPoint = strongSwingPoint;
+        this.noOfTaps = noOfTaps;
+        this.identifiedAt = identifiedAt;
     }
 
     public Zone() {
@@ -138,6 +146,22 @@ public class Zone {
 
     public void setStrength(Double strength) {
         this.strength = strength;
+    }
+
+    public Integer getNoOfTaps() {
+        return noOfTaps;
+    }
+
+    public void setNoOfTaps(Integer noOfTaps) {
+        this.noOfTaps = noOfTaps;
+    }
+
+    public LocalDateTime getIdentifiedAt() {
+        return identifiedAt;
+    }
+
+    public void setIdentifiedAt(LocalDateTime identifiedAt) {
+        this.identifiedAt = identifiedAt;
     }
 
     public SwingPoint getStrongSwingPoint() {

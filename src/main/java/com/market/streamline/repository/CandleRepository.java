@@ -20,6 +20,8 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
             Pageable pageable
     );
 
+    long countByStockSymbolAndTimeframe(String stockSymbol, String timeframe);
+
     List<CandleEntity> findByStockSymbolAndTimeframe(String stockSymbol, String timeframe);
 
     // Find the most recent candle before or at the given timestamp

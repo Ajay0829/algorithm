@@ -118,6 +118,6 @@ public class GenericPlotExporter {
 
     private String getLocalDateTimeFromCandleTimestamp(LocalDateTime timestamp) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        return timestamp.atZone(ZoneId.systemDefault()).toLocalDateTime().format(formatter);
+        return timestamp.atZone(ZoneId.of("America/New_York")).toLocalDateTime().format(formatter);
     }
 }

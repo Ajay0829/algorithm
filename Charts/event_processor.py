@@ -1,0 +1,97 @@
+"""
+Event processing logic for trading data
+"""
+import logging
+from typing import Dict, Any
+from data_models import data_state
+
+logger = logging.getLogger(__name__)
+
+class EventProcessor:
+    """Processes different types of trading events"""
+
+    @staticmethod
+    def process_event(event: Dict[str, Any]) -> bool:
+        """
+        Process a single trading event
+
+        Args:
+            event: Event data containing type, action, and data
+
+        Returns:
+            bool: True if event was processed and chart needs update
+        """
+        etype = event['type']
+        action = event['action']
+        data = event['data']
+
+        if data.get('timeframe') != '1d':
+            return False
+
+        try:
+            if etype == 'candle':
+                return EventProcessor._process_candle_event(action, data)
+            elif etype == 'swing':
+                return EventProcessor._process_swing_event(action, data)
+            elif etype == 'zone':
+                return EventProcessor._process_zone_event(action, data)
+            elif etype == 'bos':
+                return EventProcessor._process_bos_event(action, data)
+            else:
+                logger.warning(f"Unknown event type: {etype}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Error processing {etype} event: {str(e)}")
+            return False
+
+    @staticmethod
+    def _process_candle_event(action: str, data: Dict[str, Any]) -> bool:
+        """Process candle events"""
+        if action == 'created':
+            return data_state.add_candle(data)
+        elif action == 'updated':
+            return data_state.update_candle(data)
+        elif action == 'deleted':
+            return data_state.delete_candle(data.get('timestamp'))
+        else:
+            logger.warning(f"Unknown candle action: {action}")
+            return False
+
+    @staticmethod
+    def _process_swing_event(action: str, data: Dict[str, Any]) -> bool:
+        """Process swing point events"""
+        if action == 'deleted':
+            return data_state.delete_swing(
+                data.get('timestamp'),
+                data.get('swingType')
+            )
+        else:  # created or updated
+            return data_state.update_swing(data)
+
+    @staticmethod
+    def _process_zone_event(action: str, data: Dict[str, Any]) -> bool:
+        """Process supply/demand zone events"""
+        if action == 'deleted':
+            return data_state.delete_zone(
+                data.get('startTs'),
+                data.get('endTs'),
+                data.get('zoneType')
+            )
+        else:  # created or updated
+            return data_state.update_zone(data)
+
+    @staticmethod
+    def _process_bos_event(action: str, data: Dict[str, Any]) -> bool:
+        """Process break of structure events"""
+        if action == 'deleted':
+            return data_state.delete_bos(
+                data.get('start'),
+                data.get('end'),
+                data.get('bosType')
+            )
+        else:  # created or updated
+            return data_state.update_bos(data)
+
+# Global event processor instance
+event_processor = EventProcessor()

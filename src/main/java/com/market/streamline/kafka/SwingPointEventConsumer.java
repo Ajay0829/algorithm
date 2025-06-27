@@ -1,6 +1,7 @@
 package com.market.streamline.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.market.streamline.dto.ChartSwingDTO;
 import com.market.streamline.entity.SwingPoint;
 import com.market.streamline.model.SwingPointEvent;
 import com.market.streamline.service.ImpulseZoneService;
@@ -24,6 +25,10 @@ public class SwingPointEventConsumer {
     private LiquidityService liquidityService;
     @Autowired
     private ImpulseZoneService impulseZoneService;
+    @Autowired
+    private ChartAnnotationConsumer chartAnnotationConsumer;
+    @Autowired
+    private ChartAnnotationProducer chartAnnotationProducer;
 
     @KafkaListener(topics = "swing-point-event-topic", groupId = "swing-point-event-group")
     public void listen(String message) {
@@ -43,6 +48,22 @@ public class SwingPointEventConsumer {
             if (swingPoint.getIsMajor()) {
                 impulseZoneService.detectHTFZone(swingPoint);
             }
+
+            String type = swingPoint.getSwingType().equals("HIGH") ? "high" : "low";
+            String imp = swingPoint.getIsMajor() ? "major_" : "minor_";
+            chartAnnotationProducer.sendAnnotation(
+                    new ChartSwingDTO(
+                            "swing",
+                            "created",
+                            new ChartSwingDTO.SwingData(
+                                    imp + type,
+                                    swingPoint.getCandleTimestamp().toString(),
+                                    swingPoint.getSwingType().equals("HIGH"),
+                                    swingPoint.getTimeframe()
+
+                            )
+                    )
+            );
 
             // check if the swing point is liquidity sweep
             liquidityService.checkLiquiditySweep(swingPoint);

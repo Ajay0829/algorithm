@@ -22,4 +22,14 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
     );
 
     boolean existsByStrongSwingPointAndZoneType(SwingPoint strongSwingPoint, String zoneType);
+
+    Zone findTopByStockSymbolAndTimeframeAndZoneTypeAndCandleTimestampLessThanOrderByCandleTimestampDesc(
+            String stockSymbol, String timeframe, String zoneType, LocalDateTime beforeTimestamp
+    );
+
+    Zone findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanOrderByCandleTimestampDesc(
+        String stockSymbol, String timeframe, LocalDateTime beforeTimestamp
+    );
+
+    Zone findTopByStockSymbolAndTimeframeAndIdentifiedAtOrderByIdDesc(String stockSymbol, String timeframe, LocalDateTime identifiedAt);
 }

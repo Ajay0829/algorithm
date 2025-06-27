@@ -79,8 +79,10 @@ CREATE TABLE IF NOT EXISTS zones (
     type VARCHAR(16),
     volume DOUBLE PRECISION,
     strength DOUBLE PRECISION,
+    no_of_taps INTEGER,
     strong_swing_point_id INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     zone_type VARCHAR(16), -- SUPPLY, DEMAND (if you use this instead of type)
+    identified_at TIMESTAMP,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, zone_type)
 );
 CREATE INDEX IF NOT EXISTS idx_zones_symbol_timeframe_ts
@@ -156,3 +158,26 @@ CREATE TABLE IF NOT EXISTS candles (
 );
 CREATE INDEX IF NOT EXISTS idx_candles_symbol_timeframe_ts
     ON candles (stock_symbol, timeframe, candle_timestamp);
+
+-- Table: trades
+CREATE TABLE IF NOT EXISTS trades (
+    id SERIAL PRIMARY KEY,
+    stock_symbol VARCHAR(16) NOT NULL,
+    timeframe VARCHAR(16) NOT NULL,
+    timestamp TIMESTAMP NOT NULL,
+    entry_price DOUBLE PRECISION NOT NULL,
+    stop_loss DOUBLE PRECISION NOT NULL,
+    take_profit DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trades_symbol_timeframe_ts
+    ON trades (stock_symbol, timeframe, timestamp);
+
+-- Table: volatility
+CREATE TABLE IF NOT EXISTS volatility (
+    id SERIAL PRIMARY KEY,
+    stock_symbol VARCHAR(16) NOT NULL,
+    timeframe VARCHAR(16) NOT NULL,
+    volatility DOUBLE PRECISION NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_volatility_symbol_timeframe
+    ON volatility (stock_symbol, timeframe);
