@@ -1,6 +1,7 @@
 package com.market.streamline.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.market.streamline.dto.ChartCandleDTO;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.model.CandleEvent;
 import com.market.streamline.plot.GenericPlotExporter;
@@ -51,6 +52,16 @@ public class CandleEventConsumer {
     private TrendService trendService;
     @Autowired
     private TrendRepository trendRepository;
+    @Autowired
+    private TradeDetectorService tradeDetectorService;
+    @Autowired
+    private VolatilityRepository volatilityRepository;
+    @Autowired
+    private VolatilityCalculationService volatilityCalculationService;
+    @Autowired
+    private ImpulseZoneService impulseZoneService;
+    @Autowired
+    private ChartAnnotationProducer chartAnnotationProducer;
 
     public void setTotalEvents(int total, String symbol) {
         this.totalEvents = total;
@@ -74,6 +85,24 @@ public class CandleEventConsumer {
                     candleEvent.getVolume()
             );
             candleRepository.save(candleEntity);
+            chartAnnotationProducer.sendAnnotation(
+                    new ChartCandleDTO(
+                            "candle",
+                            "created",
+                            new ChartCandleDTO.CandleData(
+                                    candleEvent.getCandleTimestamp(),
+                                    candleEvent.getOpen(),
+                                    candleEvent.getHigh(),
+                                    candleEvent.getLow(),
+                                    candleEvent.getClose(),
+                                    candleEvent.getVolume(),
+                                    candleEvent.getStockSymbol(),
+                                    candleEvent.getTimeframe()
+                            )
+                    )
+            );
+            impulseZoneService.verifyZoneCorrectness(candleEntity);
+//            tradeDetectorService.detectTradeOpportunity(candleEntity);
             if (candleEntity.getOpen() >= candleEntity.getClose()) {
                 swingPointService.confirmSwingPointIfAny(candleEntity, true);
                 breakOfStructureService.checkForBreakOfStructure(candleEntity, true);
@@ -90,6 +119,7 @@ public class CandleEventConsumer {
                 swingPointService.checkForSwingPoint(candleEntity, true);
             }
             trendService.updateTrendStrength(candleEntity);
+            volatilityCalculationService.calculateVolatility(candleEntity);
             liquidityService.invalidateLiquidityZones(candleEntity);
             zoneService.invalidateZones(candleEntity);
             zoneService.updateZoneStrength(candleEntity);
@@ -103,6 +133,7 @@ public class CandleEventConsumer {
                 breakOfStructureRepository.deleteAllInBatch();
                 zoneRepository.deleteAllInBatch();
                 trendRepository.deleteAllInBatch();
+                volatilityRepository.deleteAllInBatch();
                 eventCount = 0;
             }
         } catch (Exception e) {

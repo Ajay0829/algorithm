@@ -1,14 +1,18 @@
 package com.market.streamline.service;
 
 import com.market.common.SwingType;
+import com.market.streamline.dto.ChartSwingDTO;
 import com.market.streamline.entity.BreakOfStructure;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.entity.SwingPoint;
+import com.market.streamline.entity.Volatility;
+import com.market.streamline.kafka.ChartAnnotationProducer;
 import com.market.streamline.kafka.SwingPointEventProducer;
 import com.market.streamline.model.SwingPointEvent;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.SwingPointRepository;
+import com.market.streamline.repository.VolatilityRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.core.env.Environment;
@@ -26,16 +30,30 @@ public class SwingPointService {
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
     private final SwingPointEventProducer swingPointEventProducer;
+    private final VolatilityRepository volatilityRepository;
+    private final ChartAnnotationProducer chartAnnotationProducer;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
         this.swingPointEventProducer = swingPointEventProducer;
+        this.volatilityRepository = volatilityRepository;
+        this.chartAnnotationProducer = chartAnnotationProducer;
     }
 
     public void confirmSwingPointIfAny(CandleEntity candleEntity, boolean isHighCheck) {
+        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
+                candleEntity.getStockSymbol(), candleEntity.getTimeframe()
+        );
+        if (volatility == null) {
+            // No volatility data available, cannot confirm swing point
+            return;
+        }
+
+        double volatilityValue = volatility.getVolatility();
+
         Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDescIdDesc(
                 candleEntity.getStockSymbol(), candleEntity.getTimeframe()
         );
@@ -46,14 +64,14 @@ public class SwingPointService {
             if (!recent.getConfirmed()) {
                 if (isHighCheck) {
                     if (recent.getSwingType().equals(SwingType.LOW.name())) {
-                        if (priceMovedEnough(recent.getPrice(), candleEntity.getHigh(), candleEntity.getTimeframe(), true)) {
+                        if (priceMovedEnough(recent.getPrice(), candleEntity.getHigh(), volatilityValue, true)) {
                             recent.setConfirmed(true);
                             swingPointRepository.save(recent);
                         }
                     }
                 } else {
                     if (recent.getSwingType().equals(SwingType.HIGH.name())) {
-                        if (priceMovedEnough(recent.getPrice(), candleEntity.getLow(), candleEntity.getTimeframe(), false)) {
+                        if (priceMovedEnough(recent.getPrice(), candleEntity.getLow(), volatilityValue, false)) {
                             recent.setConfirmed(true);
                             swingPointRepository.save(recent);
                         }
@@ -64,6 +82,15 @@ public class SwingPointService {
     }
 
     public Optional<SwingPoint> checkForSwingPoint(CandleEntity candleEntity, boolean isHighCheck) {
+
+        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
+                candleEntity.getStockSymbol(), candleEntity.getTimeframe()
+        );
+        if (volatility == null) {
+            // No volatility data available, cannot confirm swing point
+            return Optional.empty();
+        }
+        double volatilityValue = volatility.getVolatility();
 
         // Fetch 2*N CandleEntity candles before this timestamp for the timeframe and stock
         List<CandleEntity> candleEntities = candleRepository.findRecentCandles(
@@ -83,12 +110,12 @@ public class SwingPointService {
 
         Optional<SwingPoint> swingPoint = detectSwingPoint(sortedCandles, isHighCheck);
         if (swingPoint.isPresent()) {
-            return saveAndGet(swingPoint.get(), isHighCheck);
+            return saveAndGet(swingPoint.get(), isHighCheck, volatilityValue);
         }
         return Optional.empty();
     }
 
-    protected Optional<SwingPoint> saveAndGet(SwingPoint sp, boolean isHighCheck) {
+    protected Optional<SwingPoint> saveAndGet(SwingPoint sp, boolean isHighCheck, double volatilityValue) {
         Optional<SwingPoint> existingSwingPoint = swingPointRepository
                 .findByStockSymbolAndTimeframeAndSwingTypeAndCandleTimestamp(
                         sp.getStockSymbol(),
@@ -114,7 +141,7 @@ public class SwingPointService {
                 return Optional.empty();
             }
 
-            return handleRecentSwingPoint(sp, recent, isHighCheck);
+            return handleRecentSwingPoint(sp, recent, isHighCheck, volatilityValue);
         } else {
             swingPointRepository.save(sp);
             swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
@@ -122,7 +149,7 @@ public class SwingPointService {
         }
     }
 
-    private Optional<SwingPoint> handleRecentSwingPoint(SwingPoint sp, SwingPoint recent, boolean isHighCheck) {
+    private Optional<SwingPoint> handleRecentSwingPoint(SwingPoint sp, SwingPoint recent, boolean isHighCheck, double volatilityValue) {
 
         if (isHighCheck) {
             if (Objects.equals(recent.getSwingType(), SwingType.HIGH.name())) {
@@ -131,13 +158,25 @@ public class SwingPointService {
                     return Optional.of(recent);
                 } else {
                     swingPointRepository.delete(recent);
+                    chartAnnotationProducer.sendAnnotation(
+                            new ChartSwingDTO(
+                                    "swing",
+                                    "deleted",
+                                    new ChartSwingDTO.SwingData(
+                                            recent.getIsMajor() ? "major_high" : "minor_high",
+                                            recent.getCandleTimestamp().toString(),
+                                            recent.getSwingType().equals("HIGH"),
+                                            recent.getTimeframe()
+                                    )
+                            )
+                    );
                     swingPointRepository.save(sp);
                     swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
                 }
             } else {
                 // recent is swing low
-                if (priceMovedEnough(recent.getPrice(), sp.getPrice(), sp.getTimeframe(), true)) {
+                if (priceMovedEnough(recent.getPrice(), sp.getPrice(), volatilityValue, true)) {
                     swingPointRepository.save(sp);
                     swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
@@ -150,13 +189,25 @@ public class SwingPointService {
                     return Optional.of(recent);
                 } else {
                     swingPointRepository.delete(recent);
+                    chartAnnotationProducer.sendAnnotation(
+                            new ChartSwingDTO(
+                                    "swing",
+                                    "deleted",
+                                    new ChartSwingDTO.SwingData(
+                                            recent.getIsMajor() ? "major_low" : "minor_low",
+                                            recent.getCandleTimestamp().toString(),
+                                            recent.getSwingType().equals("HIGH"),
+                                            recent.getTimeframe()
+                                    )
+                            )
+                    );
                     swingPointRepository.save(sp);
                     swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
                 }
             } else {
                 // recent is swing high
-                if (priceMovedEnough(recent.getPrice(), sp.getPrice(), sp.getTimeframe(), false)) {
+                if (priceMovedEnough(recent.getPrice(), sp.getPrice(), volatilityValue, false)) {
                     swingPointRepository.save(sp);
                     swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
@@ -243,16 +294,16 @@ public class SwingPointService {
 
     }
 
-    private boolean priceMovedEnough(double price, double referencePrice, String timeframe, boolean direction) {
+    private boolean priceMovedEnough(double price, double referencePrice, double volatilityValue, boolean direction) {
         double percentageMove = Math.abs(price - referencePrice) * 100 / price;
-        double SWING_POINT_THRESHOLD = getSwingThreshold(timeframe);
+        double SWING_POINT_THRESHOLD = getMultiplier()* volatilityValue;
         return (direction == (price < referencePrice)) && percentageMove >= SWING_POINT_THRESHOLD;
     }
 
-    public double getSwingThreshold(String timeframe) {
-        String key = "swing.threshold." + timeframe;
+    public double getMultiplier() {
+        String key = "swing.threshold.multiplier";
         String value = env.getProperty(key);
-        if (value == null) throw new IllegalArgumentException("No swing threshold configured for timeframe: " + timeframe);
+        if (value == null) throw new IllegalArgumentException("No swing threshold configured");
         return Double.parseDouble(value);
     }
 }

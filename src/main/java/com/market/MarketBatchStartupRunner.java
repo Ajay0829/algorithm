@@ -47,8 +47,8 @@ public class MarketBatchStartupRunner {
         allEvents.sort((a, b) -> {
             LocalDateTime aStart = LocalDateTime.parse(a.getCandleTimestamp());
             LocalDateTime bStart = LocalDateTime.parse(b.getCandleTimestamp());
-            long aEnd = aStart.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() + timeframeToMillis(a.getTimeframe());
-            long bEnd = bStart.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() + timeframeToMillis(b.getTimeframe());
+            long aEnd = aStart.atZone(ZoneId.of("America/New_York")).toInstant().toEpochMilli() + timeframeToMillis(a.getTimeframe());
+            long bEnd = bStart.atZone(ZoneId.of("America/New_York")).toInstant().toEpochMilli() + timeframeToMillis(b.getTimeframe());
             int cmp = Long.compare(aEnd, bEnd);
             if (cmp != 0) return cmp;
             return Integer.compare(timeframeToMinutes(a.getTimeframe()), timeframeToMinutes(b.getTimeframe()));
@@ -84,7 +84,7 @@ public class MarketBatchStartupRunner {
                 .map(candle -> new CandleEvent(
                         stockSymbol,
                         timeframe,
-                        Instant.ofEpochMilli(candle.getTimestamp()).atZone(ZoneId.systemDefault()).toLocalDateTime().toString(),
+                        Instant.ofEpochMilli(candle.getTimestamp()).atZone(ZoneId.of("America/New_York")).toLocalDateTime().toString(),
                         candle.getOpen(),
                         candle.getHigh(),
                         candle.getLow(),

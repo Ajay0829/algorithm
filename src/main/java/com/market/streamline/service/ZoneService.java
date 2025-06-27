@@ -92,7 +92,9 @@ public class ZoneService {
                 "ACTIVE",
                 zoneVolume,
                 zoneStrength,
-                null // to be updated.
+                null,
+                0,
+                candleEntity.getCandleTimestamp()
 
         );
     }

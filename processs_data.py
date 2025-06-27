@@ -12,7 +12,7 @@ payload = {
     "stockSymbol": stockSymbol,
     "timeframe": "1d",   # or "15m", "1d"
     "from": "2024-06-01",
-    "to": "2025-03-01"
+    "to": "2024-12-01"
 }
 
 # Make the POST request
