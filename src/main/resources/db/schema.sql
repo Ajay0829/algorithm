@@ -167,17 +167,24 @@ CREATE TABLE IF NOT EXISTS trades (
     timestamp TIMESTAMP NOT NULL,
     entry_price DOUBLE PRECISION NOT NULL,
     stop_loss DOUBLE PRECISION NOT NULL,
-    take_profit DOUBLE PRECISION NOT NULL
+    take_profit DOUBLE PRECISION NOT NULL,
+    trade_type VARCHAR(255) NOT NULL,
+    result VARCHAR(255),
+    zone_id BIGINT REFERENCES zones(id) ON DELETE CASCADE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 CREATE INDEX IF NOT EXISTS idx_trades_symbol_timeframe_ts
     ON trades (stock_symbol, timeframe, timestamp);
+CREATE INDEX IF NOT EXISTS idx_trades_zone_id
+    ON trades (zone_id);
 
 -- Table: volatility
 CREATE TABLE IF NOT EXISTS volatility (
     id SERIAL PRIMARY KEY,
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
-    volatility DOUBLE PRECISION NOT NULL
+    volatility DOUBLE PRECISION NOT NULL,
+    UNIQUE (stock_symbol, timeframe)
 );
 CREATE INDEX IF NOT EXISTS idx_volatility_symbol_timeframe
     ON volatility (stock_symbol, timeframe);

@@ -28,19 +28,31 @@ public class Trade {
     @Column(name = "take_profit", nullable = false)
     private Double takeProfit;
 
+    @Column(name = "trade_type", nullable = false)
+    private String tradeType; // "BUY" or "SELL"
+
+    @Column(name = "result")
+    private String result; // Trade outcome: "WIN", "LOSS", "PENDING", etc.
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "zone_id")
+    private Zone zone;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
     public Trade() {}
 
-    public Trade(String stockSymbol, String timeframe, LocalDateTime timestamp, Double entryPrice, Double stopLoss, Double takeProfit, Boolean isActive) {
+    public Trade(String stockSymbol, String timeframe, LocalDateTime timestamp, Double entryPrice, Double stopLoss, Double takeProfit, String tradeType, Boolean isActive) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.timestamp = timestamp;
         this.entryPrice = entryPrice;
         this.stopLoss = stopLoss;
         this.takeProfit = takeProfit;
+        this.tradeType = tradeType;
         this.isActive = isActive;
+        this.result = "PENDING"; // Default to pending when trade is created
     }
 
     public Long getId() { return id; }
@@ -63,6 +75,15 @@ public class Trade {
 
     public Double getTakeProfit() { return takeProfit; }
     public void setTakeProfit(Double takeProfit) { this.takeProfit = takeProfit; }
+
+    public String getTradeType() { return tradeType; }
+    public void setTradeType(String tradeType) { this.tradeType = tradeType; }
+
+    public String getResult() { return result; }
+    public void setResult(String result) { this.result = result; }
+
+    public Zone getZone() { return zone; }
+    public void setZone(Zone zone) { this.zone = zone; }
 
     public Boolean getIsActive() {
         return isActive;

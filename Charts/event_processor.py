@@ -37,6 +37,8 @@ class EventProcessor:
                 return EventProcessor._process_zone_event(action, data)
             elif etype == 'bos':
                 return EventProcessor._process_bos_event(action, data)
+            elif etype == 'trade':
+                return EventProcessor._process_trade_event(action, data)
             else:
                 logger.warning(f"Unknown event type: {etype}")
                 return False
@@ -92,6 +94,19 @@ class EventProcessor:
             )
         else:  # created or updated
             return data_state.update_bos(data)
+
+    @staticmethod
+    def _process_trade_event(action: str, data: Dict[str, Any]) -> bool:
+        """Process trade events"""
+        if action == 'executed':
+            return data_state.add_trade(data)
+        elif action == 'updated':
+            return data_state.update_trade(data)
+        elif action == 'canceled':
+            return data_state.cancel_trade(data.get('id'))
+        else:
+            logger.warning(f"Unknown trade action: {action}")
+            return False
 
 # Global event processor instance
 event_processor = EventProcessor()

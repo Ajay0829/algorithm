@@ -16,6 +16,7 @@ class DataState:
         self.swings: List[Dict[str, Any]] = []
         self.zones: List[Dict[str, Any]] = []
         self.boss: List[Dict[str, Any]] = []
+        self.trades: List[Dict[str, Any]] = []
 
         # Performance tracking
         self.last_processed_time = 0
@@ -37,6 +38,7 @@ class DataState:
         self.swings.clear()
         self.zones.clear()
         self.boss.clear()
+        self.trades.clear()
         self.all_events_buffer.clear()
         self.chart_needs_full_rebuild = True
 
@@ -133,25 +135,69 @@ class DataState:
         return False
 
     def update_bos(self, bos_data: Dict[str, Any]) -> bool:
-        """Update break of structure"""
+        """Update break of structure safely"""
         key = (bos_data.get('start'), bos_data.get('end'), bos_data.get('bosType'))
 
-        # Remove existing BOS with same key
-        self.boss[:] = [b for b in self.boss if (b.get('start'), b.get('end'), b.get('bosType')) != key]
+        # Check if BOS already exists and update it
+        for idx, existing_bos in enumerate(self.boss):
+            existing_key = (existing_bos.get('start'), existing_bos.get('end'), existing_bos.get('bosType'))
+            if existing_key == key:
+                # Update existing BOS in-place
+                self.boss[idx].update(bos_data)
+                self.chart_needs_full_rebuild = True
+                return True
+
+        # If BOS not found, add it as new
         self.boss.append(bos_data)
         self.chart_needs_full_rebuild = True
         return True
 
-    def delete_bos(self, start, end, bos_type) -> bool:
-        """Delete a break of structure"""
-        key = (start, end, bos_type)
-        old_count = len(self.boss)
-        self.boss[:] = [b for b in self.boss if (b.get('start'), b.get('end'), b.get('bosType')) != key]
+    def add_bos(self, bos_data: Dict[str, Any]) -> bool:
+        """Add a new BOS only if it doesn't exist"""
+        key = (bos_data.get('start'), bos_data.get('end'), bos_data.get('bosType'))
 
-        if len(self.boss) != old_count:
-            self.chart_needs_full_rebuild = True
-            return True
-        return False
+        # Check if BOS already exists
+        for existing_bos in self.boss:
+            existing_key = (existing_bos.get('start'), existing_bos.get('end'), existing_bos.get('bosType'))
+            if existing_key == key:
+                # BOS already exists, don't add duplicate
+                return False
 
+        # Add new BOS
+        self.boss.append(bos_data)
+        self.chart_needs_full_rebuild = True
+        return True
+
+    def add_trade(self, trade_data: Dict[str, Any]) -> bool:
+        """Add a new trade only if it doesn't exist"""
+        trade_id = trade_data.get('id')
+
+        # Check if trade already exists
+        for existing_trade in self.trades:
+            if existing_trade.get('id') == trade_id:
+                # Trade already exists, don't add duplicate
+                return False
+
+        # Add new trade
+        self.trades.append(trade_data)
+        self.chart_needs_full_rebuild = True
+        return True
+
+    def update_trade(self, trade_data: Dict[str, Any]) -> bool:
+        """Update an existing trade (e.g., when trade result is known)"""
+        trade_id = trade_data.get('id')
+
+        # Find and update existing trade
+        for idx, trade in enumerate(self.trades):
+            if trade.get('id') == trade_id:
+                # Update the existing trade with new data
+                self.trades[idx].update(trade_data)
+                self.chart_needs_full_rebuild = True
+                return True
+
+        # If trade not found, add it as new trade
+        self.trades.append(trade_data)
+        self.chart_needs_full_rebuild = True
+        return True
 # Global data state instance
 data_state = DataState()

@@ -27,22 +27,28 @@ COLORS = {
     'bearish_candle': '#EF5350',
     'supply_zone': '#FF6B6B',
     'demand_zone': '#4ECDC4',
-    'major_high': '#FF1493',
-    'major_low': '#00FA9A',
-    'minor_high': '#FFA500',
-    'minor_low': '#1E90FF',
+    'major_high': '#8B0000',  # Dark red for major highs
+    'major_low': '#006400',   # Dark green for major lows
+    'minor_high': '#FF6B6B',  # Light red for minor highs
+    'minor_low': '#90EE90',   # Light green for minor lows
     'bullish_bos': '#00FF00',
     'bearish_bos': '#FF0000',
     'accent': '#00D4FF',
     'background': '#0f1419',
-    'card_background': '#1e2130'
+    'card_background': '#1e2130',
+    # Trade colors
+    'trade_entry': '#FFD700',  # Gold for entry point
+    'trade_stop_loss': '#FF4444',  # Red for stop loss
+    'trade_take_profit': '#44FF44',  # Green for take profit
+    'trade_win': '#00FF88',  # Bright green for winning trades
+    'trade_loss': '#FF4488',  # Red for losing trades
+    'trade_pending': '#FFA500'  # Orange for pending trades
 }
 
 # Chart styling
 SWING_MARKERS = {
-    'major_high': {'color': COLORS['major_high'], 'symbol': 'triangle-up', 'size': 20},
-    'major_low': {'color': COLORS['major_low'], 'symbol': 'triangle-down', 'size': 20},
-    'minor_high': {'color': COLORS['minor_high'], 'symbol': 'circle', 'size': 12},
-    'minor_low': {'color': COLORS['minor_low'], 'symbol': 'circle', 'size': 12}
+    'major_high': {'color': COLORS['major_high'], 'symbol': 'triangle-up', 'size': 20},      # (^) dark red
+    'major_low': {'color': COLORS['major_low'], 'symbol': 'triangle-down', 'size': 20},    # (v) dark green
+    'minor_high': {'color': COLORS['minor_high'], 'symbol': 'star', 'size': 12},          # (*) light red
+    'minor_low': {'color': COLORS['minor_low'], 'symbol': 'star', 'size': 12}             # (*) light green
 }
-
