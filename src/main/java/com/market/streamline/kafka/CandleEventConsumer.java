@@ -62,6 +62,8 @@ public class CandleEventConsumer {
     private ImpulseZoneService impulseZoneService;
     @Autowired
     private ChartAnnotationProducer chartAnnotationProducer;
+    @Autowired
+    private TradeSimulationService tradeSimulationService;
 
     public void setTotalEvents(int total, String symbol) {
         this.totalEvents = total;
@@ -102,8 +104,11 @@ public class CandleEventConsumer {
                     )
             );
             impulseZoneService.verifyZoneCorrectness(candleEntity);
-//            tradeDetectorService.detectTradeOpportunity(candleEntity);
             if (candleEntity.getOpen() >= candleEntity.getClose()) {
+                tradeSimulationService.processActiveTrade(candleEntity, false);
+                tradeDetectorService.findTradeOpportunity(candleEntity, false);
+                tradeSimulationService.processActiveTrade(candleEntity, true);
+                tradeDetectorService.findTradeOpportunity(candleEntity, true);
                 swingPointService.confirmSwingPointIfAny(candleEntity, true);
                 breakOfStructureService.checkForBreakOfStructure(candleEntity, true);
                 swingPointService.checkForSwingPoint(candleEntity, true);
@@ -111,6 +116,10 @@ public class CandleEventConsumer {
                 breakOfStructureService.checkForBreakOfStructure(candleEntity, false);
                 swingPointService.checkForSwingPoint(candleEntity, false);
             } else {
+                tradeSimulationService.processActiveTrade(candleEntity, true);
+                tradeDetectorService.findTradeOpportunity(candleEntity, true);
+                tradeSimulationService.processActiveTrade(candleEntity, false);
+                tradeDetectorService.findTradeOpportunity(candleEntity, false);
                 swingPointService.confirmSwingPointIfAny(candleEntity, false);
                 breakOfStructureService.checkForBreakOfStructure(candleEntity, false);
                 swingPointService.checkForSwingPoint(candleEntity, false);
@@ -134,6 +143,7 @@ public class CandleEventConsumer {
                 zoneRepository.deleteAllInBatch();
                 trendRepository.deleteAllInBatch();
                 volatilityRepository.deleteAllInBatch();
+                trendRepository.deleteAllInBatch();
                 eventCount = 0;
             }
         } catch (Exception e) {

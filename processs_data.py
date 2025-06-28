@@ -5,7 +5,7 @@ import subprocess
 url = "http://localhost:8081/api/batch/run"
 
 # Define the stock symbol
-stockSymbol = "AMD"  # Set your desired stock symbol here
+stockSymbol = "KO"  # Set your desired stock symbol here
 
 # JSON payload with parameters
 payload = {

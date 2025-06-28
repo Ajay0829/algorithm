@@ -15,12 +15,12 @@ class ChartRenderer:
     @staticmethod
     def create_optimized_figure(x: List, open_: List, high: List, low: List, close: List, volume: List) -> go.Figure:
         """Create figure with candlestick chart and volume subplot"""
-        # Create subplots: main chart (75%) and volume chart (25%)
+        # Create subplots: main chart (90%) and volume chart (10%)
         fig = make_subplots(
             rows=2, cols=1,
             shared_xaxes=True,
             vertical_spacing=0.02,
-            row_heights=[0.75, 0.25]
+            row_heights=[0.9, 0.1]
         )
 
         # Add candlestick trace to main chart
@@ -29,7 +29,7 @@ class ChartRenderer:
             increasing_line_color=COLORS['bullish_candle'],
             decreasing_line_color=COLORS['bearish_candle'],
             name='Price',
-            hoverinfo='x+y+name',
+            hoverinfo='skip',
             showlegend=False
         ), row=1, col=1)
 
@@ -42,7 +42,7 @@ class ChartRenderer:
             y=volume_in_millions,
             name='Volume',
             marker_color=volume_colors,
-            hovertemplate='<b>Volume</b><br>Date: %{x}<br>Volume: %{y:.1f}M<extra></extra>',
+            hoverinfo='skip',
             showlegend=False
         ), row=2, col=1)
 
@@ -64,10 +64,11 @@ class ChartRenderer:
 
     @staticmethod
     def add_annotations(fig: go.Figure, x: List, high: List, low: List):
-        """Add zones, swings, and BOS annotations to the figure"""
+        """Add zones, swings, BOS, and trade annotations to the figure"""
         ChartRenderer._add_zones(fig)
         ChartRenderer._add_swing_points(fig, x, high, low)
         ChartRenderer._add_bos_lines(fig)
+        ChartRenderer._add_trades(fig, x)
 
     @staticmethod
     def _add_zones(fig: go.Figure):
@@ -154,6 +155,115 @@ class ChartRenderer:
                 )
 
     @staticmethod
+    def _add_trades(fig: go.Figure, x: List):
+        """Add trade annotations that don't overlap with swing points"""
+        for trade in data_state.trades:
+            trade_id = trade.get('id')
+            entry_timestamp = trade.get('entryTimestamp')
+            entry_price = trade.get('entryPrice')
+            trade_type = trade.get('tradeType', 'BUY')
+            result = trade.get('result', 'PENDING')
+            is_active = trade.get('isActive', True)
+            exit_price = trade.get('exitPrice')
+            exit_timestamp = trade.get('exitTimestamp')
+
+            if not entry_timestamp or not entry_price:
+                continue
+
+            # Entry point markers - designed to not overlap with swing points
+            if trade_type == 'BUY':
+                # BUY: Green square positioned below price to avoid swing highs
+                entry_symbol = 'square'
+                entry_color = '#32CD32'  # Lime green
+                y_offset = -0.3  # Position below the price
+            else:
+                # SELL: Red circle positioned above price to avoid swing lows
+                entry_symbol = 'circle'
+                entry_color = '#DC143C'  # Crimson red
+                y_offset = 0.3  # Position above the price
+
+            fig.add_trace(go.Scatter(
+                x=[entry_timestamp],
+                y=[entry_price],
+                mode='markers',
+                marker=dict(
+                    size=14,
+                    color=entry_color,
+                    symbol=entry_symbol,
+                    line=dict(color='white', width=2)
+                ),
+                name=f'Entry',
+                showlegend=False,
+                hoverinfo='skip'
+            ), row=1, col=1)
+
+            # Entry price annotation positioned to avoid overlap
+            fig.add_annotation(
+                x=entry_timestamp,
+                y=entry_price + y_offset,
+                text=f"${entry_price:.2f}",
+                showarrow=False,
+                font=dict(size=9, color='white', family='Arial Black'),
+                bgcolor=entry_color,
+                bordercolor='white',
+                borderwidth=1,
+                opacity=0.9,
+                xanchor='center',
+                yanchor='middle',
+                row=1, col=1
+            )
+
+            # Exit marker - show for any trade with a result (WIN/LOSS), regardless of active status
+            if result in ['WIN', 'LOSS'] and exit_price:
+                # Use entry timestamp if exit timestamp is not available
+                display_exit_timestamp = exit_timestamp if exit_timestamp else entry_timestamp
+
+                # Exit markers - using distinct symbols that don't overlap
+                if result == 'WIN':
+                    outcome_color = '#00FF00'  # Bright green
+                    exit_symbol = 'diamond'    # Diamond for wins
+                elif result == 'LOSS':
+                    outcome_color = '#FF4444'  # Red
+                    exit_symbol = 'x'          # X for losses
+                else:
+                    outcome_color = '#FFA500'  # Orange
+                    exit_symbol = 'diamond'
+
+                fig.add_trace(go.Scatter(
+                    x=[display_exit_timestamp],
+                    y=[exit_price],
+                    mode='markers',
+                    marker=dict(
+                        size=12,
+                        color=outcome_color,
+                        symbol=exit_symbol,
+                        line=dict(color='white', width=2)
+                    ),
+                    name=f'Exit',
+                    showlegend=False,
+                    hoverinfo='skip'
+                ), row=1, col=1)
+
+                # Exit price with P&L calculation
+                profit_loss = exit_price - entry_price if trade_type == 'BUY' else entry_price - exit_price
+                profit_loss_text = f"+${profit_loss:.2f}" if profit_loss >= 0 else f"-${abs(profit_loss):.2f}"
+
+                fig.add_annotation(
+                    x=display_exit_timestamp,
+                    y=exit_price + (0.2 if result == 'WIN' else -0.2),
+                    text=f"${exit_price:.2f}<br>{profit_loss_text}",
+                    showarrow=False,
+                    font=dict(size=8, color='white', family='Arial Black'),
+                    bgcolor=outcome_color,
+                    bordercolor='white',
+                    borderwidth=1,
+                    opacity=0.9,
+                    xanchor='center',
+                    yanchor='middle',
+                    row=1, col=1
+                )
+
+    @staticmethod
     def apply_chart_layout(fig: go.Figure, is_paused: bool = False):
         """Apply professional chart layout and styling"""
         title_suffix = " (PAUSED)" if is_paused else ""
@@ -170,12 +280,7 @@ class ChartRenderer:
             paper_bgcolor=COLORS['background'],
             font=dict(color='#ffffff', family='Arial'),
             margin=dict(l=50, r=80, t=80, b=50),
-            hovermode='x unified',
-            hoverlabel=dict(
-                bgcolor='#1a1a1a',
-                bordercolor=COLORS['accent'],
-                font=dict(color='#ffffff', size=12)
-            ),
+            hovermode=False,
             uirevision='constant',
             dragmode='zoom'
         )
@@ -183,8 +288,9 @@ class ChartRenderer:
         # Update main chart (price) axes
         fig.update_xaxes(
             showgrid=True, gridcolor='#2d3748', gridwidth=0.5,
-            showspikes=True, spikemode='across', spikecolor=COLORS['accent'],
+            showspikes=True, spikemode='across+toaxis', spikecolor=COLORS['accent'],
             spikethickness=1, spikedash='dot',
+            spikesnap='cursor',
             type='date', rangeslider=dict(visible=False),
             rangeselector=dict(
                 buttons=[
@@ -204,8 +310,9 @@ class ChartRenderer:
         fig.update_yaxes(
             title=dict(text="Price ($)", font=dict(size=14, color='#B0BEC5')),
             showgrid=True, gridcolor='#2d3748', gridwidth=0.5,
-            showspikes=True, spikemode='across', spikecolor=COLORS['accent'],
+            showspikes=True, spikemode='across+toaxis', spikecolor=COLORS['accent'],
             spikethickness=1, spikedash='dot',
+            spikesnap='cursor',
             tickformat='$.2f', side='right',
             uirevision='constant', row=1, col=1
         )
@@ -214,6 +321,9 @@ class ChartRenderer:
         fig.update_xaxes(
             title=dict(text="Time", font=dict(size=14, color='#B0BEC5')),
             showgrid=True, gridcolor='#2d3748', gridwidth=0.5,
+            showspikes=True, spikemode='across+toaxis', spikecolor=COLORS['accent'],
+            spikethickness=1, spikedash='dot',
+            spikesnap='cursor',
             type='date', rangeslider=dict(visible=False),
             uirevision='constant', row=2, col=1
         )
@@ -221,6 +331,9 @@ class ChartRenderer:
         fig.update_yaxes(
             title=dict(text="Volume (M)", font=dict(size=14, color='#B0BEC5')),
             showgrid=True, gridcolor='#2d3748', gridwidth=0.5,
+            showspikes=True, spikemode='across+toaxis', spikecolor=COLORS['accent'],
+            spikethickness=1, spikedash='dot',
+            spikesnap='cursor',
             tickformat=',', side='right',
             uirevision='constant', row=2, col=1
         )

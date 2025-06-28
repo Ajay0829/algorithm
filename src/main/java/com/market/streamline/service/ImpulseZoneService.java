@@ -225,7 +225,7 @@ public class ImpulseZoneService {
                 isDemand ? "DEMAND" : "SUPPLY",
                 nearPoint,
                 farPoint,
-                "ACTIVE",
+                "NA",
                 zoneVolume,
                 zoneStrength,
                 start.getStrongSwingPoint(), // Link the strong swing point
