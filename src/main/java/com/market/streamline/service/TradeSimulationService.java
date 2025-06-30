@@ -51,7 +51,7 @@ public class TradeSimulationService {
                             chartTradeDTO
                     );
 
-                    System.out.println("TRADE RESULT: WIN - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade closed at TP. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getTakeProfit() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint());
+//                    System.out.println("TRADE RESULT: WIN - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade closed at TP. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getTakeProfit() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint());
 
                 } else if (trade.getTradeType().equals("SELL") && currentHigh >= trade.getStopLoss()) {
                     trade.setResult("LOSS");
@@ -66,7 +66,7 @@ public class TradeSimulationService {
                             chartTradeDTO
                     );
 
-                    System.out.println("TRADE RESULT: LOSS - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade hit SL. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getStopLoss() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " marked INVALID");
+//                    System.out.println("TRADE RESULT: LOSS - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade hit SL. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getStopLoss() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " marked INVALID");
                 }
             } else {
                 if (trade.getTradeType().equals("BUY") && currentLow <= trade.getStopLoss()) {
@@ -82,7 +82,7 @@ public class TradeSimulationService {
                             chartTradeDTO
                     );
 
-                    System.out.println("TRADE RESULT: LOSS - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade hit SL. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getStopLoss() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " marked INVALID");
+//                    System.out.println("TRADE RESULT: LOSS - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade hit SL. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getStopLoss() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " marked INVALID");
 
                 } else if (trade.getTradeType().equals("SELL") && currentLow <= trade.getTakeProfit()) {
                     trade.setResult("WIN");
@@ -97,7 +97,7 @@ public class TradeSimulationService {
                             chartTradeDTO
                     );
 
-                    System.out.println("TRADE RESULT: WIN - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade closed at TP. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getTakeProfit() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint());
+//                    System.out.println("TRADE RESULT: WIN - " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade closed at TP. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + trade.getEntryPrice() + ", Exit: " + trade.getTakeProfit() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint());
                 }
             }
         }
@@ -167,9 +167,9 @@ public class TradeSimulationService {
             exitTradeDTO = getResultingChartTradeDTO(candleEntity, trade, exitTradeDTO);
             chartAnnotationProducer.sendAnnotation(exitTradeDTO);
 
-            System.out.println("AI LOSS TRADE " + candleEntity.getCandleTimestamp() + " " + trade.getTradeType());
+//            System.out.println("AI LOSS TRADE " + candleEntity.getCandleTimestamp() + " " + trade.getTradeType());
         } else {
-            System.out.println("TRADE TAKEN: " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade opened. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + entryPrice + ", SL: " + stopLossPrice + ", TP: " + targetPrice + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " (Strength: " + zone.getStrength() + ")");
+//            System.out.println("TRADE TAKEN: " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade opened. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + entryPrice + ", SL: " + stopLossPrice + ", TP: " + targetPrice + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " (Strength: " + zone.getStrength() + ")");
         }
     }
 

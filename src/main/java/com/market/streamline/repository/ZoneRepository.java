@@ -74,4 +74,14 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
                                                                         @Param("currentPrice") Double currentPrice,
                                                                         @Param("currentTimestamp") LocalDateTime currentTimestamp);
 
+    // Method to find the latest zone by zone type
+    @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe AND z.zoneType = :zoneType " +
+            "AND (z.type IS NULL OR z.type = 'VALID') " +
+            "AND z.identifiedAt < :currentTimestamp " +
+            "ORDER BY z.identifiedAt DESC LIMIT 1")
+    Optional<Zone> findLatestZoneByType(@Param("stockSymbol") String stockSymbol,
+                                       @Param("timeframe") String timeframe,
+                                       @Param("zoneType") String zoneType,
+                                       @Param("currentTimestamp") LocalDateTime currentTimestamp);
+
 }

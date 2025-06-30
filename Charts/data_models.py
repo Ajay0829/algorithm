@@ -17,6 +17,7 @@ class DataState:
         self.zones: List[Dict[str, Any]] = []
         self.boss: List[Dict[str, Any]] = []
         self.trades: List[Dict[str, Any]] = []
+        self.liquidities: List[Dict[str, Any]] = []  # New liquidity state
 
         # Performance tracking
         self.last_processed_time = 0
@@ -39,6 +40,7 @@ class DataState:
         self.zones.clear()
         self.boss.clear()
         self.trades.clear()
+        self.liquidities.clear()  # Clear liquidities too
         self.all_events_buffer.clear()
         self.chart_needs_full_rebuild = True
 
@@ -199,5 +201,40 @@ class DataState:
         self.trades.append(trade_data)
         self.chart_needs_full_rebuild = True
         return True
+
+    def update_liquidity(self, liquidity_data: Dict[str, Any]) -> bool:
+        """Update liquidity zones"""
+        timestamp = liquidity_data.get('candleTimestamp')
+        liquidity_type = liquidity_data.get('liquidityType')
+        price = liquidity_data.get('price')
+        stock_symbol = liquidity_data.get('stockSymbol')
+
+        # Create unique key for liquidity identification
+        key = (timestamp, liquidity_type, stock_symbol, price)
+
+        # Remove existing liquidity with same key
+        self.liquidities[:] = [l for l in self.liquidities if
+                              (l.get('candleTimestamp'), l.get('liquidityType'),
+                               l.get('stockSymbol'), l.get('price')) != key]
+
+        # Add new liquidity
+        self.liquidities.append(liquidity_data)
+        return True
+
+    def delete_liquidity(self, liquidity_data: Dict[str, Any]) -> bool:
+        """Delete a specific liquidity zone"""
+        timestamp = liquidity_data.get('candleTimestamp')
+        liquidity_type = liquidity_data.get('liquidityType')
+        price = liquidity_data.get('price')
+        stock_symbol = liquidity_data.get('stockSymbol')
+
+        key = (timestamp, liquidity_type, stock_symbol, price)
+        old_count = len(self.liquidities)
+
+        self.liquidities[:] = [l for l in self.liquidities if
+                              (l.get('candleTimestamp'), l.get('liquidityType'),
+                               l.get('stockSymbol'), l.get('price')) != key]
+
+        return len(self.liquidities) != old_count
 # Global data state instance
 data_state = DataState()
