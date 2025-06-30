@@ -4,10 +4,10 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "liquidity_sweeps", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"stock_symbol", "timeframe", "candle_timestamp"})
+@Table(name = "liquidity", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"stock_symbol", "timeframe", "candle_timestamp", "liquidity_type"})
 })
-public class LiquiditySweep {
+public class Liquidity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,31 +21,31 @@ public class LiquiditySweep {
     @Column(name = "candle_timestamp", nullable = false)
     private LocalDateTime candleTimestamp;
 
-    @Column(name = "sweep_type") // e.g., BUY, SELL
-    private String sweepType;
-
-    @Column(name = "volume")
-    private Double volume;
+    @Column(name = "liquidity_type", nullable = false)
+    private String liquidityType;
 
     @Column(name = "price")
     private Double price;
 
-    @Column(name = "no_of_equals")
-    private Integer noOfEquals;
+    @Column(name = "strength")
+    private Integer strength;
 
-    public LiquiditySweep() {
+    // Default constructor
+    public Liquidity() {
     }
 
-    public LiquiditySweep(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String sweepType, Double volume, Double price, Integer noOfEquals) {
+    // Constructor with all fields
+    public Liquidity(String stockSymbol, String timeframe, LocalDateTime candleTimestamp,
+                    String liquidityType, Double price, Integer strength) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.candleTimestamp = candleTimestamp;
-        this.sweepType = sweepType;
-        this.volume = volume;
+        this.liquidityType = liquidityType;
         this.price = price;
-        this.noOfEquals = noOfEquals;
+        this.strength = strength;
     }
 
+    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -78,20 +78,12 @@ public class LiquiditySweep {
         this.candleTimestamp = candleTimestamp;
     }
 
-    public String getSweepType() {
-        return sweepType;
+    public String getLiquidityType() {
+        return liquidityType;
     }
 
-    public void setSweepType(String sweepType) {
-        this.sweepType = sweepType;
-    }
-
-    public Double getVolume() {
-        return volume;
-    }
-
-    public void setVolume(Double volume) {
-        this.volume = volume;
+    public void setLiquidityType(String liquidityType) {
+        this.liquidityType = liquidityType;
     }
 
     public Double getPrice() {
@@ -102,12 +94,24 @@ public class LiquiditySweep {
         this.price = price;
     }
 
-    public Integer getNoOfEquals() {
-        return noOfEquals;
+    public Integer getStrength() {
+        return strength;
     }
 
-    public void setNoOfEquals(Integer noOfEquals) {
-        this.noOfEquals = noOfEquals;
+    public void setStrength(Integer strength) {
+        this.strength = strength;
+    }
+
+    @Override
+    public String toString() {
+        return "Liquidity{" +
+                "id=" + id +
+                ", stockSymbol='" + stockSymbol + '\'' +
+                ", timeframe='" + timeframe + '\'' +
+                ", candleTimestamp=" + candleTimestamp +
+                ", liquidityType='" + liquidityType + '\'' +
+                ", price=" + price +
+                ", strength=" + strength +
+                '}';
     }
 }
-

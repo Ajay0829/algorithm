@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
@@ -43,4 +44,9 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
     );
 
     boolean existsByStockSymbolAndTimeframe(String stockSymbol, String timeframe);
+
+    // Method needed for CSV pipeline
+    Optional<CandleEntity> findByStockSymbolAndTimeframeAndCandleTimestamp(
+        String stockSymbol, String timeframe, LocalDateTime candleTimestamp
+    );
 }

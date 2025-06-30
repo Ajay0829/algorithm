@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 @Service
 public class SwingPointService {
 
-    private final int WINDOW_SIZE = 10;
+    private final int WINDOW_SIZE = 5;
     private final SwingPointRepository swingPointRepository;
     private final CandleRepository candleRepository;
     private final BreakOfStructureRepository breakOfStructureRepository;
@@ -67,6 +67,8 @@ public class SwingPointService {
                         if (priceMovedEnough(recent.getPrice(), candleEntity.getHigh(), volatilityValue, true)) {
                             recent.setConfirmed(true);
                             swingPointRepository.save(recent);
+                            // Publish confirmed swing point event to existing Kafka topic
+                            swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(recent));
                         }
                     }
                 } else {
@@ -74,6 +76,8 @@ public class SwingPointService {
                         if (priceMovedEnough(recent.getPrice(), candleEntity.getLow(), volatilityValue, false)) {
                             recent.setConfirmed(true);
                             swingPointRepository.save(recent);
+                            // Publish confirmed swing point event to existing Kafka topic
+                            swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(recent));
                         }
                     }
                 }

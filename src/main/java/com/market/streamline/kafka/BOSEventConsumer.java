@@ -46,7 +46,7 @@ public class BOSEventConsumer {
                 return;
             }
             BreakOfStructure breakOfStructure = bos.get();
-            trendService.updateTrend(breakOfStructure);
+            // trendService.updateTrend(breakOfStructure);
 
 
         } catch (Exception e) {

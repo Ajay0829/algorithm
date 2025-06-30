@@ -69,6 +69,7 @@ class ChartRenderer:
         ChartRenderer._add_swing_points(fig, x, high, low)
         ChartRenderer._add_bos_lines(fig)
         ChartRenderer._add_trades(fig, x)
+        ChartRenderer._add_liquidities(fig, x)
 
     @staticmethod
     def _add_zones(fig: go.Figure):
@@ -262,6 +263,101 @@ class ChartRenderer:
                     yanchor='middle',
                     row=1, col=1
                 )
+
+    @staticmethod
+    def _add_liquidities(fig: go.Figure, x: List):
+        """Add liquidity zones as horizontal lines extending 15 candles"""
+        if not data_state.liquidities:
+            return
+
+        # Convert x timestamps to datetime for calculations
+        x_datetime = [datetime.fromisoformat(ts.replace('Z', '+00:00')) if isinstance(ts, str) else ts for ts in x]
+
+        for liquidity in data_state.liquidities:
+            candleTimestamp = liquidity.get('candleTimestamp')
+            price = liquidity.get('price')
+            liquidityType = liquidity.get('liquidityType')
+            strength = liquidity.get('strength', 1)
+            action = liquidity.get('action', 'created')
+
+            if not candleTimestamp or price is None:
+                continue
+
+            # Convert timestamp to datetime
+            start_time = datetime.fromisoformat(candleTimestamp.replace('Z', '+00:00')) if isinstance(candleTimestamp, str) else candleTimestamp
+
+            # Find the start position in the chart
+            start_idx = None
+            for i, chart_time in enumerate(x_datetime):
+                if chart_time >= start_time:
+                    start_idx = i
+                    break
+
+            if start_idx is None:
+                continue
+
+            # Calculate end position (15 candles after start)
+            end_idx = min(start_idx + 15, len(x) - 1)
+
+            # Determine line color and style based on type and action
+            if action == 'swept':
+                # Swept liquidity - dashed line with faded color
+                line_color = 'rgba(255, 165, 0, 0.6)'  # Orange, faded
+                line_dash = 'dash'
+                line_width = 2
+            elif liquidityType == 'SELL_SWEEP':
+                # Red for sell sweep liquidity
+                line_color = 'rgba(255, 0, 0, 0.8)'  # Red
+                line_dash = 'solid'
+                line_width = max(2, strength)  # Thicker line for higher strength
+            elif liquidityType == 'BUY_SWEEP':
+                # Green for buy sweep liquidity
+                line_color = 'rgba(0, 255, 0, 0.8)'  # Green
+                line_dash = 'solid'
+                line_width = max(2, strength)  # Thicker line for higher strength
+            else:
+                # Default color
+                line_color = 'rgba(128, 128, 128, 0.8)'  # Gray
+                line_dash = 'solid'
+                line_width = 2
+
+            # Add horizontal line from start to end position
+            fig.add_trace(go.Scatter(
+                x=[x[start_idx], x[end_idx]],
+                y=[price, price],
+                mode='lines',
+                line=dict(
+                    color=line_color,
+                    width=line_width,
+                    dash=line_dash
+                ),
+                name=f'{liquidityType} Liquidity',
+                showlegend=False,
+                hoverinfo='skip'
+            ), row=1, col=1)
+
+            # Add liquidity label at the start of the line
+            label_text = f"{liquidityType}<br>Price: {price:.2f}<br>Strength: {strength}"
+            if action == 'swept':
+                label_text += "<br>SWEPT"
+
+            fig.add_annotation(
+                x=x[start_idx],
+                y=price,
+                text=label_text,
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor=line_color,
+                ax=20,
+                ay=-30 if liquidityType == 'SELL_SWEEP' else 30,  # Position above/below based on type
+                font=dict(size=8, color=line_color),
+                bgcolor='rgba(0,0,0,0.7)',
+                bordercolor=line_color,
+                borderwidth=1,
+                row=1, col=1
+            )
 
     @staticmethod
     def apply_chart_layout(fig: go.Figure, is_paused: bool = False):

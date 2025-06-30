@@ -45,6 +45,11 @@ public class SwingPointEventConsumer {
                     swingPointEvent.isMajor()
             );
 
+            // Handle confirmed swing points specifically
+            if (swingPoint.getConfirmed()) {
+                handleConfirmedSwingPoint(swingPoint);
+            }
+
             if (swingPoint.getIsMajor()) {
                 impulseZoneService.detectHTFZone(swingPoint);
             }
@@ -64,14 +69,12 @@ public class SwingPointEventConsumer {
                             )
                     )
             );
-
-            // check if the swing point is liquidity sweep
-            liquidityService.checkLiquiditySweep(swingPoint);
-
-            // update any liquidity zones based on the swing point
-            liquidityService.updateLiquidityZones(swingPoint);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void handleConfirmedSwingPoint(SwingPoint confirmedSwingPoint) {
+        liquidityService.checkLiquiditySweep(confirmedSwingPoint);
     }
 }
