@@ -1,8 +1,6 @@
 package com.market.streamline.service;
 
 import com.market.common.SwingType;
-import com.market.streamline.dto.ChartBOSDTO;
-import com.market.streamline.dto.ChartSwingDTO;
 import com.market.streamline.entity.BreakOfStructure;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.entity.SwingPoint;
@@ -28,14 +26,16 @@ public class BreakOfStructureService {
     private final Environment env;
     private final VolatilityRepository volatilityRepository;
     private final ChartAnnotationProducer chartAnnotationProducer;
+    private final ChartAnnotationService chartAnnotationService;
 
-    public BreakOfStructureService(BOSEventProducer bosEventProducer, SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer) {
+    public BreakOfStructureService(BOSEventProducer bosEventProducer, SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer, ChartAnnotationService chartAnnotationService) {
         this.bosEventProducer = bosEventProducer;
         this.swingPointRepository = swingPointRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
         this.volatilityRepository = volatilityRepository;
         this.chartAnnotationProducer = chartAnnotationProducer;
+        this.chartAnnotationService = chartAnnotationService;
     }
 
     public void checkForBreakOfStructure(CandleEntity candleEntity, boolean isHighCheck) {
@@ -75,51 +75,25 @@ public class BreakOfStructureService {
             SwingPoint strongSwingPoint = swingPoints.get(1);
             strongSwingPoint.setIsMajor(true);
             swingPointRepository.save(strongSwingPoint);
-            chartAnnotationProducer.sendAnnotation(
-                    new ChartSwingDTO(
-                            "swing",
-                            "updated",
-                            new ChartSwingDTO.SwingData(
-                                    strongSwingPoint.getSwingType().equals("HIGH") ? "major_high" : "major_low",
-                                    strongSwingPoint.getCandleTimestamp().toString(),
-                                    strongSwingPoint.getSwingType().equals("HIGH"),
-                                    strongSwingPoint.getTimeframe()
-
-                            )
-                    )
+            chartAnnotationService.processSwingPoint(strongSwingPoint, "updated");
+            BreakOfStructure bos = new BreakOfStructure(
+                    candleEntity.getStockSymbol(),
+                    candleEntity.getTimeframe(),
+                    candleEntity.getCandleTimestamp(),
+                    lastSwingType == SwingType.HIGH ? "BEARISH" : "BULLISH",
+                    lastSwingType == SwingType.HIGH ? "LOW" : "HIGH",
+                    weakSwingPoint,
+                    strongSwingPoint
             );
-            breakOfStructureRepository.save(
-                    new BreakOfStructure(
-                        candleEntity.getStockSymbol(),
-                        candleEntity.getTimeframe(),
-                        candleEntity.getCandleTimestamp(),
-                        lastSwingType == SwingType.HIGH ? "BEARISH" : "BULLISH",
-                        lastSwingType == SwingType.HIGH ? "LOW" : "HIGH",
-                        weakSwingPoint,
-                        strongSwingPoint
-                    )
-            );
-
-            chartAnnotationProducer.sendAnnotation(
-                    new ChartBOSDTO(
-                            "bos",
-                            "created",
-                            new ChartBOSDTO.BOSData(
-                                    weakSwingPoint.getCandleTimestamp().toString(),
-                                    candleEntity.getCandleTimestamp().toString(),
-                                    lastSwingType == SwingType.HIGH ? "BEARISH" : "BULLISH",
-                                    candleEntity.getTimeframe(),
-                                    weakSwingPoint.getPrice()
-                            )
-                    )
-            );
+            breakOfStructureRepository.save(bos);
+            chartAnnotationService.processBreakOfStructure(bos, "created");
             bosEventProducer.sendBOSEvent(
                     new BOSEvent(
-                        candleEntity.getStockSymbol(),
-                        candleEntity.getTimeframe(),
-                        lastSwingType == SwingType.HIGH ? "BEARISH" : "BULLISH",
-                        candleEntity.getCandleTimestamp(),
-                        weakSwingPoint
+                        bos.getStockSymbol(),
+                        bos.getTimeframe(),
+                        bos.getDirection(),
+                        bos.getCandleTimestamp(),
+                        bos.getWeakSwingPoint()
                     )
             );
         }

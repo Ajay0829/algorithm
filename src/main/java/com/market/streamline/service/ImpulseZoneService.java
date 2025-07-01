@@ -1,6 +1,5 @@
 package com.market.streamline.service;
 
-import com.market.streamline.dto.ChartZoneDTO;
 import com.market.streamline.entity.*;
 import com.market.streamline.kafka.ChartAnnotationProducer;
 import com.market.streamline.repository.BreakOfStructureRepository;
@@ -25,14 +24,16 @@ public class ImpulseZoneService {
     private final Environment env;
     private final VolatilityRepository volatilityRepository;
     private final ChartAnnotationProducer chartAnnotationProducer;
+    private final ChartAnnotationService chartAnnotationService;
 
-    public ImpulseZoneService(BreakOfStructureRepository breakOfStructureRepository, ZoneRepository zoneRepository, CandleRepository candleRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer) {
+    public ImpulseZoneService(BreakOfStructureRepository breakOfStructureRepository, ZoneRepository zoneRepository, CandleRepository candleRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer, ChartAnnotationService chartAnnotationService) {
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.zoneRepository = zoneRepository;
         this.candleRepository = candleRepository;
         this.env = env;
         this.volatilityRepository = volatilityRepository;
         this.chartAnnotationProducer = chartAnnotationProducer;
+        this.chartAnnotationService = chartAnnotationService;
     }
 
     public void verifyZoneCorrectness(CandleEntity candleEntity) {
@@ -80,27 +81,9 @@ public class ImpulseZoneService {
             }
         }
 
-        LocalDateTime nextCandleTimestamp;
-        if (zone.getTimeframe().equals("1d")) {
-            nextCandleTimestamp = zone.getCandleTimestamp().plusDays(15);
-        } else {
-            nextCandleTimestamp = zone.getCandleTimestamp().plusHours(15);
+        if (isSave) {
+            chartAnnotationService.processZone(zone, "created");
         }
-
-        chartAnnotationProducer.sendAnnotation(
-                new ChartZoneDTO(
-                        "zone",
-                        isSave ? "created" : "deleted",
-                        new ChartZoneDTO.ZoneData(
-                                zone.getZoneType(),
-                                zone.getNearPoint(),
-                                zone.getFarPoint(),
-                                zone.getCandleTimestamp().toString(),
-                                nextCandleTimestamp.toString(),
-                                zone.getTimeframe()
-                        )
-                )
-        );
     }
 
     // Instead of using BOS, use impulse to identify zones

@@ -1,7 +1,6 @@
 package com.market.streamline.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.market.streamline.dto.ChartCandleDTO;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.entity.CandleAggregatedDataEntity;
 import com.market.streamline.model.CandleEvent;
@@ -82,6 +81,10 @@ public class CandleEventConsumer {
     private CandleAggregatedDataMapper candleAggregatedDataMapper;
     @Autowired
     private CandleAggregatedDataCsvExporter csvExporter;
+    @Autowired
+    private KafkaQueueClearService kafkaQueueClearService;
+    @Autowired
+    private ChartAnnotationService chartAnnotationService;
 
 
     public void setTotalEvents(int total, String symbol) {
@@ -106,22 +109,7 @@ public class CandleEventConsumer {
                     candleEvent.getVolume()
             );
             candleRepository.save(candleEntity);
-            chartAnnotationProducer.sendAnnotation(
-                    new ChartCandleDTO(
-                            "candle",
-                            "created",
-                            new ChartCandleDTO.CandleData(
-                                    candleEvent.getCandleTimestamp(),
-                                    candleEvent.getOpen(),
-                                    candleEvent.getHigh(),
-                                    candleEvent.getLow(),
-                                    candleEvent.getClose(),
-                                    candleEvent.getVolume(),
-                                    candleEvent.getStockSymbol(),
-                                    candleEvent.getTimeframe()
-                            )
-                    )
-            );
+            chartAnnotationService.processCandle(candleEntity, "created");
             impulseZoneService.verifyZoneCorrectness(candleEntity);
             if (candleEntity.getOpen() >= candleEntity.getClose()) {
                 tradeSimulationService.processActiveTrade(candleEntity, false);
@@ -152,48 +140,68 @@ public class CandleEventConsumer {
             }
             // trendService.updateTrendStrength(candleEntity);
             volatilityCalculationService.calculateVolatility(candleEntity);
-            zoneService.invalidateZones(candleEntity);
-            zoneService.updateZoneStrength(candleEntity);
             eventCount++;
 
             // Store the aggregated candle data for later processing
-            if (Objects.equals(candleEntity.getTimeframe(), "1h")) {
-                CandleAggregatedData candleAggregatedData = candleDataAggregationService.generateInitialAggregatedData(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), candleEntity.getCandleTimestamp());
-                CandleAggregatedDataEntity aggregatedEntity = candleAggregatedDataMapper.toEntity(candleAggregatedData);
-                candleAggregatedDataRepository.save(aggregatedEntity);
-            }
+            saveCandleAggregatedData(candleEntity);
 
             // After all events are processed, collect initial candle data
             if (eventCount == totalEvents && stockSymbol != null) {
-                // Retrieve all stored aggregated data for final processing
-                List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1h");
-                List<CandleAggregatedData> finalData = allAggregatedData.stream().map(
-                        candleAggregatedDataMapper::fromEntity
-                ).toList();
-                List<CandleAggregatedData> finalProcessedData = candleDataAggregationService.fillTradeInformation(finalData);
-
-                // Export the final processed data to CSV
-                String csvFilePath = csvExporter.generateFilePath(stockSymbol, "data/processed");
-                csvExporter.exportToCsv(finalProcessedData, csvFilePath);
-                System.out.println("Exported aggregated data for " + stockSymbol + " to: " + csvFilePath);
-
-
-                // Clear repositories
-                candleRepository.deleteAllInBatch();
-                swingPointRepository.deleteAllInBatch();
-                breakOfStructureRepository.deleteAllInBatch();
-                zoneRepository.deleteAllInBatch();
-                trendRepository.deleteAllInBatch();
-                volatilityRepository.deleteAllInBatch();
-                tradeRepository.deleteAllInBatch();
-                liquidityRepository.deleteAllInBatch();
-                liquiditySweepRepository.deleteAllInBatch();
-                candleAggregatedDataRepository.deleteAllInBatch();
-
-                eventCount = 0;
+                proceessEndOfEvents();
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void saveCandleAggregatedData(CandleEntity candleEntity) {
+
+        // How do I make it understand that the timeframe i am trading is 1h?
+        if (Objects.equals(candleEntity.getTimeframe(), "1d")) {
+            CandleAggregatedData candleAggregatedData = candleDataAggregationService.generateInitialAggregatedData(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), candleEntity.getCandleTimestamp());
+            CandleAggregatedDataEntity aggregatedEntity = candleAggregatedDataMapper.toEntity(candleAggregatedData);
+            candleAggregatedDataRepository.save(aggregatedEntity);
+        }
+    }
+
+    private void proceessEndOfEvents() {
+        // TODO: How do I make it understand that the timeframe i am trading is 1h?
+        List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1d");
+        List<CandleAggregatedData> finalData = allAggregatedData.stream().map(
+                candleAggregatedDataMapper::fromEntity
+        ).toList();
+
+        // TODO: Optimise this, don't store in memory
+        List<CandleAggregatedData> finalProcessedData = candleDataAggregationService.fillTradeInformation(finalData);
+
+        // Export the final processed data to CSV
+        String csvFilePath = csvExporter.generateFilePath(stockSymbol, "data/processed");
+        csvExporter.exportToCsv(finalProcessedData, csvFilePath);
+        System.out.println("Exported aggregated data for " + stockSymbol + " to: " + csvFilePath);
+
+        cleanUpData();
+
+        eventCount = 0;
+    }
+
+    private void cleanUpData() {
+
+        // TODO: Look at how we can reuse the stored data instead of fetching from api every time
+        candleRepository.deleteAllInBatch();
+
+        // Clear repositories
+        swingPointRepository.deleteAllInBatch();
+        breakOfStructureRepository.deleteAllInBatch();
+        zoneRepository.deleteAllInBatch();
+        trendRepository.deleteAllInBatch();
+        volatilityRepository.deleteAllInBatch();
+        tradeRepository.deleteAllInBatch();
+        liquidityRepository.deleteAllInBatch();
+        liquiditySweepRepository.deleteAllInBatch();
+        candleAggregatedDataRepository.deleteAllInBatch();
+
+        // TODO: Update this logic to clear old messages from Kafka queues
+        System.out.println("Clearing Kafka queues after processing completion...");
+        kafkaQueueClearService.clearAllQueues();
     }
 }
