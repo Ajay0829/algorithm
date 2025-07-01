@@ -1,12 +1,8 @@
 package com.market.streamline.service;
 
-import com.market.streamline.dto.ChartZoneDTO;
 import com.market.streamline.entity.*;
 import com.market.streamline.kafka.ChartAnnotationProducer;
-import com.market.streamline.repository.BreakOfStructureRepository;
-import com.market.streamline.repository.CandleRepository;
-import com.market.streamline.repository.VolatilityRepository;
-import com.market.streamline.repository.ZoneRepository;
+import com.market.streamline.repository.*;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +11,8 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class ImpulseZoneService {
@@ -24,15 +22,19 @@ public class ImpulseZoneService {
     private final CandleRepository candleRepository;
     private final Environment env;
     private final VolatilityRepository volatilityRepository;
-    private final ChartAnnotationProducer chartAnnotationProducer;
+    private final ChartAnnotationService chartAnnotationService;
+    private final TradeSimulationService tradeSimulationService;
+    private final TradeRepository tradeRepository;
 
-    public ImpulseZoneService(BreakOfStructureRepository breakOfStructureRepository, ZoneRepository zoneRepository, CandleRepository candleRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer) {
+    public ImpulseZoneService(BreakOfStructureRepository breakOfStructureRepository, ZoneRepository zoneRepository, CandleRepository candleRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationService chartAnnotationService, TradeSimulationService tradeSimulationService, TradeRepository tradeRepository) {
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.zoneRepository = zoneRepository;
         this.candleRepository = candleRepository;
         this.env = env;
         this.volatilityRepository = volatilityRepository;
-        this.chartAnnotationProducer = chartAnnotationProducer;
+        this.chartAnnotationService = chartAnnotationService;
+        this.tradeSimulationService = tradeSimulationService;
+        this.tradeRepository = tradeRepository;
     }
 
     public void verifyZoneCorrectness(CandleEntity candleEntity) {
@@ -80,27 +82,52 @@ public class ImpulseZoneService {
             }
         }
 
-        LocalDateTime nextCandleTimestamp;
-        if (zone.getTimeframe().equals("1d")) {
-            nextCandleTimestamp = zone.getCandleTimestamp().plusDays(15);
-        } else {
-            nextCandleTimestamp = zone.getCandleTimestamp().plusHours(15);
+        if (isSave) {
+            chartAnnotationService.processZone(zone, "created");
         }
+    }
 
-        chartAnnotationProducer.sendAnnotation(
-                new ChartZoneDTO(
-                        "zone",
-                        isSave ? "created" : "deleted",
-                        new ChartZoneDTO.ZoneData(
-                                zone.getZoneType(),
-                                zone.getNearPoint(),
-                                zone.getFarPoint(),
-                                zone.getCandleTimestamp().toString(),
-                                nextCandleTimestamp.toString(),
-                                zone.getTimeframe()
-                        )
-                )
+
+    public void invalidateZones(CandleEntity candleEntity, boolean isHighCheck) {
+        Double currentPrice = isHighCheck ? candleEntity.getHigh() : candleEntity.getLow();
+        List<Zone> supplyZones = zoneRepository.findZonesByTypeWithFarPointPriceCondition(
+                candleEntity.getStockSymbol(),
+                candleEntity.getTimeframe(),
+                "SUPPLY",
+                currentPrice,
+                candleEntity.getCandleTimestamp()
         );
+
+        List<Zone> demandZones = zoneRepository.findZonesByTypeWithFarPointPriceCondition(
+                candleEntity.getStockSymbol(),
+                candleEntity.getTimeframe(),
+                "DEMAND",
+                currentPrice,
+                candleEntity.getCandleTimestamp()
+        );
+        List<Zone> finalZones = Stream.concat(supplyZones.stream(), demandZones.stream()).toList();
+        finalZones.forEach(zone -> {
+            if ("ACTIVE".equals(zone.getType())) {
+
+                // When invalidating zones, mark any active trade as loss.
+                Optional<Trade> trade = tradeRepository.findByStockSymbolAndTimeframeAndZone(
+                        zone.getStockSymbol(),
+                        zone.getTimeframe(),
+                        zone
+                );
+                if (trade.isEmpty()) {
+                    zone.setType("INVALID");
+                    zoneRepository.save(zone);
+                } else {
+                    tradeSimulationService.evaluateTrade(trade.get(), zone, candleEntity, "LOSS");
+                }
+
+                return;
+            }
+            zone.setType("INVALID");
+            zoneRepository.save(zone);
+            chartAnnotationService.processZone(zone, "deleted");
+        });
     }
 
     // Instead of using BOS, use impulse to identify zones

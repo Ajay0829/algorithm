@@ -1,6 +1,7 @@
 package com.market.streamline.repository;
 
 import com.market.streamline.entity.Trade;
+import com.market.streamline.entity.Zone;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -18,4 +19,8 @@ public interface TradeRepository extends JpaRepository<Trade, Long> {
 
     // Method to check if ANY trade exists at a specific timestamp (regardless of active status)
     Optional<Trade> findFirstByStockSymbolAndTimeframeAndTimestamp(String stockSymbol, String timeframe, LocalDateTime timestamp);
+
+    Optional<Trade> findByStockSymbolAndTimeframeAndZone(String stockSymbol, String timeframe, Zone zone);
+
+    boolean existsByStockSymbolAndTimeframeAndIsActiveTrue(String stockSymbol, String timeframe);
 }

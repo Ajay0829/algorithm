@@ -1,6 +1,5 @@
 package com.market.streamline.service;
 
-import com.market.streamline.dto.ChartLiquidityDTO;
 import com.market.streamline.entity.*;
 import com.market.streamline.kafka.ChartAnnotationProducer;
 import com.market.streamline.repository.LiquidityRepository;
@@ -18,12 +17,14 @@ public class LiquidityService {
     private final LiquidityRepository liquidityRepository;
     private final VolatilityRepository volatilityRepository;
     private final ChartAnnotationProducer chartAnnotationProducer;
+    private final ChartAnnotationService chartAnnotationService;
 
-    public LiquidityService(LiquiditySweepRepository liquiditySweepRepository, LiquidityRepository liquidityRepository, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer) {
+    public LiquidityService(LiquiditySweepRepository liquiditySweepRepository, LiquidityRepository liquidityRepository, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer, ChartAnnotationService chartAnnotationService) {
         this.liquiditySweepRepository = liquiditySweepRepository;
         this.liquidityRepository = liquidityRepository;
         this.volatilityRepository = volatilityRepository;
         this.chartAnnotationProducer = chartAnnotationProducer;
+        this.chartAnnotationService = chartAnnotationService;
     }
 
     public void checkLiquiditySweep(SwingPoint swingPoint) {
@@ -218,16 +219,6 @@ public class LiquidityService {
      * Send chart annotation event for liquidity zone changes
      */
     private void sendLiquidityChartEvent(Liquidity liquidity, String action) {
-        ChartLiquidityDTO.LiquidityData data = new ChartLiquidityDTO.LiquidityData(
-                liquidity.getTimeframe(),
-                liquidity.getStockSymbol(),
-                liquidity.getLiquidityType(),
-                liquidity.getPrice(),
-                liquidity.getStrength(),
-                liquidity.getCandleTimestamp().toString()
-        );
-
-        ChartLiquidityDTO chartEvent = new ChartLiquidityDTO("liquidity", action, data);
-        chartAnnotationProducer.sendAnnotation(chartEvent);
+        chartAnnotationService.processLiquidity(liquidity, action);
     }
 }

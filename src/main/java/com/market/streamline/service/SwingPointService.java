@@ -1,7 +1,6 @@
 package com.market.streamline.service;
 
 import com.market.common.SwingType;
-import com.market.streamline.dto.ChartSwingDTO;
 import com.market.streamline.entity.BreakOfStructure;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.entity.SwingPoint;
@@ -32,8 +31,9 @@ public class SwingPointService {
     private final SwingPointEventProducer swingPointEventProducer;
     private final VolatilityRepository volatilityRepository;
     private final ChartAnnotationProducer chartAnnotationProducer;
+    private final ChartAnnotationService chartAnnotationService;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer, ChartAnnotationService chartAnnotationService) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
@@ -41,6 +41,7 @@ public class SwingPointService {
         this.swingPointEventProducer = swingPointEventProducer;
         this.volatilityRepository = volatilityRepository;
         this.chartAnnotationProducer = chartAnnotationProducer;
+        this.chartAnnotationService = chartAnnotationService;
     }
 
     public void confirmSwingPointIfAny(CandleEntity candleEntity, boolean isHighCheck) {
@@ -162,18 +163,7 @@ public class SwingPointService {
                     return Optional.of(recent);
                 } else {
                     swingPointRepository.delete(recent);
-                    chartAnnotationProducer.sendAnnotation(
-                            new ChartSwingDTO(
-                                    "swing",
-                                    "deleted",
-                                    new ChartSwingDTO.SwingData(
-                                            recent.getIsMajor() ? "major_high" : "minor_high",
-                                            recent.getCandleTimestamp().toString(),
-                                            recent.getSwingType().equals("HIGH"),
-                                            recent.getTimeframe()
-                                    )
-                            )
-                    );
+                    chartAnnotationService.processSwingPoint(recent, "deleted");
                     swingPointRepository.save(sp);
                     swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
@@ -193,18 +183,7 @@ public class SwingPointService {
                     return Optional.of(recent);
                 } else {
                     swingPointRepository.delete(recent);
-                    chartAnnotationProducer.sendAnnotation(
-                            new ChartSwingDTO(
-                                    "swing",
-                                    "deleted",
-                                    new ChartSwingDTO.SwingData(
-                                            recent.getIsMajor() ? "major_low" : "minor_low",
-                                            recent.getCandleTimestamp().toString(),
-                                            recent.getSwingType().equals("HIGH"),
-                                            recent.getTimeframe()
-                                    )
-                            )
-                    );
+                    chartAnnotationService.processSwingPoint(recent, "deleted");
                     swingPointRepository.save(sp);
                     swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
                     return Optional.of(sp);
