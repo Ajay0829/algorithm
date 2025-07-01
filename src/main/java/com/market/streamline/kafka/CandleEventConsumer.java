@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.market.streamline.entity.CandleEntity;
 import com.market.streamline.entity.CandleAggregatedDataEntity;
 import com.market.streamline.model.CandleEvent;
-import com.market.streamline.plot.GenericPlotExporter;
 import com.market.streamline.repository.*;
 import com.market.streamline.service.*;
 import com.market.streamline.util.CandleAggregatedDataCsvExporter;
@@ -19,30 +18,14 @@ import java.util.Objects;
 
 @Component
 public class CandleEventConsumer {
-
-    @Autowired
-    private FeatureExtractionService featureExtractionService;
-
     @Autowired
     private SwingPointService swingPointService;
-
-    @Autowired
-    private GenericPlotExporter genericPlotExporter;
-
     @Autowired
     private CandleRepository candleRepository;
-
     @Autowired
     private SwingPointRepository swingPointRepository;
-
     @Autowired
     private BreakOfStructureRepository breakOfStructureRepository;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private int eventCount = 0;
-    private int totalEvents = 0;
-    private String stockSymbol = null;
     @Autowired
     private BreakOfStructureService breakOfStructureService;
     @Autowired
@@ -64,8 +47,6 @@ public class CandleEventConsumer {
     @Autowired
     private ImpulseZoneService impulseZoneService;
     @Autowired
-    private ChartAnnotationProducer chartAnnotationProducer;
-    @Autowired
     private TradeSimulationService tradeSimulationService;
     @Autowired
     private TradeRepository tradeRepository;
@@ -86,6 +67,11 @@ public class CandleEventConsumer {
     @Autowired
     private ChartAnnotationService chartAnnotationService;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private int eventCount = 0;
+    private int totalEvents = 0;
+    private String stockSymbol = null;
+
 
     public void setTotalEvents(int total, String symbol) {
         this.totalEvents = total;
@@ -96,62 +82,60 @@ public class CandleEventConsumer {
     public void listenCandleAdded(String message) {
         try {
             CandleEvent candleEvent = objectMapper.readValue(message, CandleEvent.class);
-
-            LocalDateTime candleTime = LocalDateTime.parse(candleEvent.getCandleTimestamp(), DateTimeFormatter.ISO_DATE_TIME);
-            CandleEntity candleEntity = new CandleEntity(
-                    candleEvent.getStockSymbol(),
-                    candleEvent.getTimeframe(),
-                    candleTime,
-                    candleEvent.getOpen(),
-                    candleEvent.getClose(),
-                    candleEvent.getHigh(),
-                    candleEvent.getLow(),
-                    candleEvent.getVolume()
-            );
+            CandleEntity candleEntity = getCandleEntity(candleEvent);
             candleRepository.save(candleEntity);
             chartAnnotationService.processCandle(candleEntity, "created");
-            impulseZoneService.verifyZoneCorrectness(candleEntity);
-            if (candleEntity.getOpen() >= candleEntity.getClose()) {
-                tradeSimulationService.processActiveTrade(candleEntity, false);
-                tradeDetectorService.findTradeOpportunity(candleEntity, false);
-                tradeSimulationService.processActiveTrade(candleEntity, true);
-                tradeDetectorService.findTradeOpportunity(candleEntity, true);
-                liquidityService.invalidateLiquidityZones(candleEntity, true);
-                liquidityService.invalidateLiquidityZones(candleEntity, false);
-                swingPointService.confirmSwingPointIfAny(candleEntity, true);
-                breakOfStructureService.checkForBreakOfStructure(candleEntity, true);
-                swingPointService.checkForSwingPoint(candleEntity, true);
-                swingPointService.confirmSwingPointIfAny(candleEntity, false);
-                breakOfStructureService.checkForBreakOfStructure(candleEntity, false);
-                swingPointService.checkForSwingPoint(candleEntity, false);
-            } else {
-                tradeSimulationService.processActiveTrade(candleEntity, true);
-                tradeDetectorService.findTradeOpportunity(candleEntity, true);
-                tradeSimulationService.processActiveTrade(candleEntity, false);
-                tradeDetectorService.findTradeOpportunity(candleEntity, false);
-                liquidityService.invalidateLiquidityZones(candleEntity, false);
-                liquidityService.invalidateLiquidityZones(candleEntity, true);
-                swingPointService.confirmSwingPointIfAny(candleEntity, false);
-                breakOfStructureService.checkForBreakOfStructure(candleEntity, false);
-                swingPointService.checkForSwingPoint(candleEntity, false);
-                swingPointService.confirmSwingPointIfAny(candleEntity, true);
-                breakOfStructureService.checkForBreakOfStructure(candleEntity, true);
-                swingPointService.checkForSwingPoint(candleEntity, true);
-            }
-            // trendService.updateTrendStrength(candleEntity);
-            volatilityCalculationService.calculateVolatility(candleEntity);
+            processCandle(candleEntity);
             eventCount++;
-
-            // Store the aggregated candle data for later processing
-            saveCandleAggregatedData(candleEntity);
 
             // After all events are processed, collect initial candle data
             if (eventCount == totalEvents && stockSymbol != null) {
-                proceessEndOfEvents();
+                processEndOfEvents();
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private boolean isRedCandle(CandleEntity candleEntity) {
+        return candleEntity.getOpen() > candleEntity.getClose();
+    }
+
+    private void processCandlePoint(CandleEntity candleEntity, boolean isHighCheck) {
+        tradeSimulationService.processActiveTrade(candleEntity, isHighCheck);
+        impulseZoneService.invalidateZones(candleEntity, isHighCheck);
+        tradeDetectorService.findTradeOpportunity(candleEntity, isHighCheck);
+        liquidityService.invalidateLiquidityZones(candleEntity, isHighCheck);
+        swingPointService.confirmSwingPointIfAny(candleEntity, isHighCheck);
+        breakOfStructureService.checkForBreakOfStructure(candleEntity, isHighCheck);
+        swingPointService.checkForSwingPoint(candleEntity, isHighCheck);
+    }
+
+    private void processCandleClosure(CandleEntity candleEntity) {
+        impulseZoneService.verifyZoneCorrectness(candleEntity);
+        volatilityCalculationService.calculateVolatility(candleEntity);
+//        saveCandleAggregatedData(candleEntity);
+    }
+
+    private void processCandle(CandleEntity candleEntity) {
+        boolean redCandle = isRedCandle(candleEntity);
+        processCandlePoint(candleEntity, redCandle); // If Red Candle, Process High else Process Low
+        processCandlePoint(candleEntity, !redCandle); // If Red Candle, Process Low next else Process High next
+        processCandleClosure(candleEntity); // Process the closure of the candle
+    }
+
+    private static CandleEntity getCandleEntity(CandleEvent candleEvent) {
+        LocalDateTime candleTime = LocalDateTime.parse(candleEvent.getCandleTimestamp(), DateTimeFormatter.ISO_DATE_TIME);
+        return new CandleEntity(
+                candleEvent.getStockSymbol(),
+                candleEvent.getTimeframe(),
+                candleTime,
+                candleEvent.getOpen(),
+                candleEvent.getClose(),
+                candleEvent.getHigh(),
+                candleEvent.getLow(),
+                candleEvent.getVolume()
+        );
     }
 
     private void saveCandleAggregatedData(CandleEntity candleEntity) {
@@ -164,7 +148,7 @@ public class CandleEventConsumer {
         }
     }
 
-    private void proceessEndOfEvents() {
+    private void processEndOfEvents() {
         // TODO: How do I make it understand that the timeframe i am trading is 1h?
         List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1d");
         List<CandleAggregatedData> finalData = allAggregatedData.stream().map(

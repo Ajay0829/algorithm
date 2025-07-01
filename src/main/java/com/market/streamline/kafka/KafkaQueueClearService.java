@@ -25,7 +25,6 @@ public class KafkaQueueClearService {
 
     private static final List<String> TOPICS_TO_CLEAR = Arrays.asList(
             "candle-added",
-            "chart-annotations",
             "bos-event-topic",
             "swing-point-event-topic"
     );
@@ -138,34 +137,6 @@ public class KafkaQueueClearService {
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Alternative method for very fast cleanup - just delete topics without recreation
-     * Use this if you're immediately shutting down and don't need topics recreated
-     */
-    public void clearAllQueuesQuick() {
-        try (AdminClient adminClient = AdminClient.create(kafkaAdmin.getConfigurationProperties())) {
-
-            System.out.println("Starting quick Kafka queue cleanup (delete only)...");
-            long startTime = System.currentTimeMillis();
-
-            Set<String> existingTopics = getExistingTopics(adminClient);
-            List<String> topicsToDelete = TOPICS_TO_CLEAR.stream()
-                    .filter(existingTopics::contains)
-                    .collect(Collectors.toList());
-
-            if (!topicsToDelete.isEmpty()) {
-                deleteTopicsOptimized(adminClient, topicsToDelete);
-            }
-
-            long endTime = System.currentTimeMillis();
-            System.out.println("Quick Kafka queue cleanup completed in " + (endTime - startTime) + "ms");
-
-        } catch (Exception e) {
-            System.err.println("Error in quick clear: " + e.getMessage());
-            throw new RuntimeException("Failed to quickly clear Kafka queues", e);
         }
     }
 }

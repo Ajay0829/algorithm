@@ -84,4 +84,20 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
                                        @Param("zoneType") String zoneType,
                                        @Param("currentTimestamp") LocalDateTime currentTimestamp);
 
+
+    // Method to fetch all zones of a particular type with farPoint price conditions
+    // For SUPPLY zones: returns zones where current price > farPoint
+    // For DEMAND zones: returns zones where current price < farPoint
+    @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe AND z.zoneType = :zoneType " +
+            "AND (z.type IS NULL OR z.type = 'VALID' OR z.type = 'ACTIVE') " +
+            "AND z.identifiedAt < :currentTimestamp " +
+            "AND ((:zoneType = 'SUPPLY' AND :currentPrice > z.farPoint) OR " +
+            "     (:zoneType = 'DEMAND' AND :currentPrice < z.farPoint)) " +
+            "ORDER BY z.candleTimestamp DESC")
+    List<Zone> findZonesByTypeWithFarPointPriceCondition(@Param("stockSymbol") String stockSymbol,
+                                                         @Param("timeframe") String timeframe,
+                                                         @Param("zoneType") String zoneType,
+                                                         @Param("currentPrice") Double currentPrice,
+                                                         @Param("currentTimestamp") LocalDateTime currentTimestamp);
+
 }

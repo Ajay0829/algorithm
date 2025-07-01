@@ -26,7 +26,7 @@ public class TradeSimulationService {
         this.chartAnnotationService = chartAnnotationService;
     }
 
-    public void processActiveTrade(CandleEntity candleEntity, boolean isLow) {
+    public void processActiveTrade(CandleEntity candleEntity, boolean isHighCheck) {
         Optional<Trade> tradeOptional = tradeRepository.findFirstByStockSymbolAndTimeframeAndIsActiveTrue(
                 candleEntity.getStockSymbol(), candleEntity.getTimeframe());
         if (tradeOptional.isPresent()) {
@@ -34,77 +34,52 @@ public class TradeSimulationService {
             double currentHigh = candleEntity.getHigh();
             double currentLow = candleEntity.getLow();
             Zone zone = trade.getZone();
-            boolean isTradeDone = false;
 
-            if (!isLow) {
+            if (isHighCheck) {
                 if (trade.getTradeType().equals("BUY") && currentHigh >= trade.getTakeProfit()) {
-                    trade.setResult("WIN");
-                    trade.setIsActive(false);
-                    zone.setNoOfTaps(zone.getNoOfTaps() + 1);
-                    zoneRepository.save(zone);
-                    tradeRepository.save(trade);
-                    isTradeDone = true;
+                    evaluateTrade(trade, zone, candleEntity, "WIN");
                 } else if (trade.getTradeType().equals("SELL") && currentHigh >= trade.getStopLoss()) {
-                    trade.setResult("LOSS");
-                    trade.setIsActive(false); // Set to false for stop loss hits
-                    zone.setType("INVALID");
-                    zoneRepository.save(zone);
-                    tradeRepository.save(trade);
-                    isTradeDone = true;
+                    evaluateTrade(trade, zone, candleEntity, "LOSS");
                 }
             } else {
                 if (trade.getTradeType().equals("BUY") && currentLow <= trade.getStopLoss()) {
-                    trade.setResult("LOSS");
-                    trade.setIsActive(false); // Set to false for stop loss hits
-                    zone.setType("INVALID");
-                    zoneRepository.save(zone);
-                    tradeRepository.save(trade);
-                    isTradeDone = true;
+                    evaluateTrade(trade, zone, candleEntity, "LOSS");
 
                 } else if (trade.getTradeType().equals("SELL") && currentLow <= trade.getTakeProfit()) {
-                    trade.setResult("WIN");
-                    trade.setIsActive(false);
-                    zone.setNoOfTaps(zone.getNoOfTaps() + 1);
-                    zoneRepository.save(zone);
-                    tradeRepository.save(trade);
-                    isTradeDone = true;
+                    evaluateTrade(trade, zone, candleEntity, "WIN");
                 }
-            }
-
-            if (isTradeDone) {
-                chartAnnotationService.processTrade(trade, candleEntity, "updated");
             }
         }
     }
 
-    public void addTrade(CandleEntity candleEntity, Zone zone, boolean isLossTrade) {
+    public void evaluateTrade(Trade trade, Zone zone, CandleEntity candleEntity, String result) {
+        trade.setResult(result);
+        trade.setIsActive(false);
+        zone.setType(result.equals("WIN") ? "VALID" : "INVALID");
+        zoneRepository.save(zone);
+        tradeRepository.save(trade);
+        if (zone.getType().equals("INVALID")) {
+            chartAnnotationService.processZone(zone, "deleted");
+        }
+        System.out.println("Trade Closed: " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade closed. Symbol: " + candleEntity.getStockSymbol() + ", Result: " + trade.getResult() + ", Entry: " + trade.getEntryPrice() + ", SL: " + trade.getStopLoss() + ", TP: " + trade.getTakeProfit() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " (Strength: " + zone.getStrength() + ")");
+        chartAnnotationService.processTrade(trade, candleEntity, "updated");
+    }
+
+    public void addTrade(CandleEntity candleEntity, Zone zone, double entryPrice) {
         Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
 
         if (volatility == null) {
-            // Handle case where volatility data is not available
             return;
         }
 
         double volatilityValue = volatility.getVolatility();
-        double entryPrice, stopLossPrice, targetPrice;
+        double stopLossPrice, targetPrice;
         String zoneType = zone.getZoneType();
 
-        boolean isGreenCandle = candleEntity.getOpen() < candleEntity.getClose();
-
         if (zoneType.equals("DEMAND")) {
-            if (isGreenCandle) {
-                entryPrice = Math.min(zone.getNearPoint(), candleEntity.getOpen());
-            } else {
-                entryPrice = zone.getNearPoint();
-            }
             stopLossPrice = entryPrice - entryPrice * 2*volatilityValue/100;
             targetPrice = entryPrice + entryPrice * 5*volatilityValue/100;
         } else {
-            if (!isGreenCandle) {
-                entryPrice = Math.max(zone.getNearPoint(), candleEntity.getOpen());
-            } else {
-                entryPrice = zone.getNearPoint();
-            }
             stopLossPrice = entryPrice + entryPrice * 2*volatilityValue/100;
             targetPrice = entryPrice - entryPrice * 5*volatilityValue/100;
         }
@@ -117,29 +92,17 @@ public class TradeSimulationService {
                 stopLossPrice,
                 targetPrice,
                 zone.getZoneType().equals("DEMAND") ? "BUY" : "SELL",
-                true // Always start as active
+                true
         );
 
-        // Set the zone and save the trade FIRST to get proper ID
+        zone.setType("ACTIVE");
+        zone.setNoOfTaps(zone.getNoOfTaps() + 1);
+        zoneRepository.save(zone);
         trade.setZone(zone);
         tradeRepository.save(trade);
 
-        // Send EXECUTED event immediately for ALL trades (show entry marker right away)
         chartAnnotationService.processTrade(trade, candleEntity, "executed");
 
-        // Handle loss trades separately AFTER showing the entry
-        if (isLossTrade) {
-            trade.setResult("LOSS");
-            trade.setIsActive(false);
-            zone.setType("INVALID");
-            tradeRepository.save(trade);
-            zoneRepository.save(zone);
-
-            chartAnnotationService.processTrade(trade, candleEntity, "updated");
-
-//            System.out.println("AI LOSS TRADE " + candleEntity.getCandleTimestamp() + " " + trade.getTradeType());
-        } else {
-//            System.out.println("TRADE TAKEN: " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade opened. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + entryPrice + ", SL: " + stopLossPrice + ", TP: " + targetPrice + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " (Strength: " + zone.getStrength() + ")");
-        }
+        System.out.println("TRADE TAKEN: " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade opened. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + entryPrice + ", SL: " + stopLossPrice + ", TP: " + targetPrice + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " (Strength: " + zone.getStrength() + ")");
     }
 }
