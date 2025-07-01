@@ -159,10 +159,6 @@ public class ZoneService {
         return (ltfCandle.getLow() >= htfCandle.getLow() && ltfCandle.getHigh() <= htfCandle.getHigh());
     }
 
-    public boolean invalidateZones(CandleEntity candleEntity) {
-        return true;
-    }
-
     // Check for taps, if there is an active trade ignore, update no of taps, strength
     public Zone updateZoneStrength(CandleEntity candleEntity) {
         return null;
