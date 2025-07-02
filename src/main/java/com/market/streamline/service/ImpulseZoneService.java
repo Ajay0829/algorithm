@@ -58,6 +58,42 @@ public class ImpulseZoneService {
 
         double volatilityValue = volatility.getVolatility();
 
+        // Don't add overlapping zones.
+        // Ideally we want to store the latest zone,
+        // If an active trade exists for the old zone, then don't add the new zone.
+
+        Optional<Zone> existingZoneOfSameType = zoneRepository.findLatestZoneByTypeActiveOrValid(
+                candleEntity.getStockSymbol(),
+                candleEntity.getTimeframe(),
+                zone.getZoneType(),
+                candleEntity.getCandleTimestamp()
+        );
+
+        if (existingZoneOfSameType.isPresent()) {
+            Zone existingZone = existingZoneOfSameType.get();
+
+            if (isOverlappingExistingZone(existingZone, zone.getNearPoint(), zone.getFarPoint())) {
+                Optional<Trade> existingTrade = tradeRepository.findByStockSymbolAndTimeframeAndZone(
+                        existingZone.getStockSymbol(),
+                        existingZone.getTimeframe(),
+                        existingZone
+                );
+
+                System.out.println("Overlapping zone found: " + existingZone.getZoneType() + " " + existingZone.getNearPoint() + " - " + existingZone.getFarPoint() + " with new zone: " + zone.getNearPoint() + " - " + zone.getFarPoint());
+
+                if (existingTrade.isPresent() && existingTrade.get().getIsActive()) {
+                    System.out.println("Active trade exists for the existing zone, not adding new zone: " + existingZone.getZoneType() + " " + existingZone.getNearPoint() + " - " + existingZone.getFarPoint());
+                    // Can't delete the already active trade zone, just delete the new zone.
+                    zoneRepository.delete(zone);
+                    return;
+                } else {
+                    System.out.println("No active trade exists for the existing zone, marking it as invalid: " + existingZone.getZoneType() + " " + existingZone.getNearPoint() + " - " + existingZone.getFarPoint());
+                    existingZone.setType("INVALID");
+                    zoneRepository.save(existingZone);
+                    chartAnnotationService.processZone(existingZone, "deleted");
+                }
+            }
+        }
 
         String zoneType = zone.getZoneType();
         boolean isSave = true;
@@ -118,6 +154,7 @@ public class ImpulseZoneService {
                 if (trade.isEmpty()) {
                     zone.setType("INVALID");
                     zoneRepository.save(zone);
+                    chartAnnotationService.processZone(zone, "deleted");
                 } else {
                     tradeSimulationService.evaluateTrade(trade.get(), zone, candleEntity, "LOSS");
                 }
@@ -261,6 +298,18 @@ public class ImpulseZoneService {
         );
         zoneRepository.save(zone);
         return Optional.of(zone);
+    }
+
+    private boolean isOverlappingExistingZone(Zone existingZone, double nearPoint, double farPoint) {
+        // Normalize the zone boundaries to ensure min <= max for both zones
+        double existingMin = Math.min(existingZone.getNearPoint(), existingZone.getFarPoint());
+        double existingMax = Math.max(existingZone.getNearPoint(), existingZone.getFarPoint());
+        double newMin = Math.min(nearPoint, farPoint);
+        double newMax = Math.max(nearPoint, farPoint);
+
+        // Check for overlap: two ranges overlap if one range's min is <= other range's max
+        // and the other range's min is <= the first range's max
+        return !(newMax < existingMin || newMin > existingMax);
     }
 
     boolean priceMovedEnough(double startPrice, double endPrice, double volatilityValue, boolean direction) {

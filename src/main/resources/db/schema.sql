@@ -39,6 +39,28 @@ CREATE TABLE IF NOT EXISTS stock_features (
 CREATE INDEX IF NOT EXISTS idx_stock_features_symbol_timeframe_ts
     ON stock_features (stock_symbol, timeframe, candle_timestamp);
 
+-- Table: candle_aggregated_data
+CREATE TABLE IF NOT EXISTS candle_aggregated_data (
+    id SERIAL PRIMARY KEY,
+    stock_symbol VARCHAR(255),
+    timeframe VARCHAR(255),
+    candle_timestamp TIMESTAMP,
+    open_price DOUBLE PRECISION,
+    close_price DOUBLE PRECISION,
+    high_price DOUBLE PRECISION,
+    low_price DOUBLE PRECISION,
+    volume DOUBLE PRECISION,
+    last_swing_high DOUBLE PRECISION,
+    last_swing_low DOUBLE PRECISION,
+    supply_price DOUBLE PRECISION,
+    demand_price DOUBLE PRECISION,
+    last_liquidity_sweep_type INTEGER,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_candle_aggregated_data_symbol_timeframe_ts
+    ON candle_aggregated_data (stock_symbol, timeframe, candle_timestamp);
+
 -- Table: swing_points
 CREATE TABLE IF NOT EXISTS swing_points (
     id SERIAL PRIMARY KEY,
@@ -108,7 +130,8 @@ CREATE TABLE IF NOT EXISTS bos (
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
     candle_timestamp TIMESTAMP NOT NULL,
-    type VARCHAR(16), -- e.g., UP, DOWN
+    direction VARCHAR(16), -- UP, DOWN
+    type VARCHAR(16),
     weak_swing_point INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     strong_swing_point INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, type)
@@ -129,6 +152,21 @@ CREATE TABLE IF NOT EXISTS liquidity (
 );
 CREATE INDEX IF NOT EXISTS idx_liquidity_symbol_timeframe_ts
     ON liquidity (stock_symbol, timeframe, candle_timestamp);
+
+-- Table: liquidity_sweeps
+CREATE TABLE IF NOT EXISTS liquidity_sweeps (
+    id SERIAL PRIMARY KEY,
+    stock_symbol VARCHAR(16) NOT NULL,
+    timeframe VARCHAR(16) NOT NULL,
+    candle_timestamp TIMESTAMP NOT NULL,
+    sweep_type VARCHAR(16), -- BUY, SELL
+    volume DOUBLE PRECISION,
+    price DOUBLE PRECISION,
+    no_of_equals INTEGER,
+    UNIQUE (stock_symbol, timeframe, candle_timestamp)
+);
+CREATE INDEX IF NOT EXISTS idx_liquidity_sweeps_symbol_timeframe_ts
+    ON liquidity_sweeps (stock_symbol, timeframe, candle_timestamp);
 
 -- Table: fundamentals
 CREATE TABLE IF NOT EXISTS fundamentals (
@@ -170,7 +208,7 @@ CREATE TABLE IF NOT EXISTS trades (
     take_profit DOUBLE PRECISION NOT NULL,
     trade_type VARCHAR(255) NOT NULL,
     result VARCHAR(255),
-    zone_id BIGINT REFERENCES zones(id) ON DELETE CASCADE,
+    zone_id INTEGER REFERENCES zones(id) ON DELETE CASCADE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 CREATE INDEX IF NOT EXISTS idx_trades_symbol_timeframe_ts

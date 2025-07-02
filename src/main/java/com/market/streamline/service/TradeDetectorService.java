@@ -47,7 +47,6 @@ public class TradeDetectorService {
         Optional<Zone> mayBeDemandZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "DEMAND", candleEntity.getCandleTimestamp());
         Optional<Zone> mayBeSupplyZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "SUPPLY", candleEntity.getCandleTimestamp());
 
-        boolean isRedCandle = candleEntity.getClose() < candleEntity.getOpen();
         // Check demand zones
         if (mayBeDemandZone.isPresent()) {
             Zone demandZone = mayBeDemandZone.get();
