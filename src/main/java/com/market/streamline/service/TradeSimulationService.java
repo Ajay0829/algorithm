@@ -1,9 +1,10 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.Trade;
-import com.market.streamline.entity.Volatility;
-import com.market.streamline.entity.Zone;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.trade.Trade;
+import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.entity.zone.Zone;
+import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.TradeRepository;
 import com.market.streamline.repository.VolatilityRepository;
 import com.market.streamline.repository.ZoneRepository;

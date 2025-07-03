@@ -1,6 +1,6 @@
 package com.market.streamline.repository;
 
-import com.market.streamline.entity.SwingPoint;
+import com.market.streamline.entity.structure.SwingPoint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,8 +17,6 @@ public interface SwingPointRepository extends JpaRepository<SwingPoint, Long> {
     );
 
     List<SwingPoint> findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDescIdDesc(String stockSymbol, String timeframe);
-
-    Optional<SwingPoint> findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(String stockSymbol, String timeframe);
 
     Optional<SwingPoint> findTopByStockSymbolAndTimeframeAndSwingTypeOrderByCandleTimestampDescIdDesc(
         String stockSymbol, String timeframe, String swingType

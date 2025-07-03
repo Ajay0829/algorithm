@@ -1,7 +1,7 @@
 package com.market.streamline.repository;
 
-import com.market.streamline.entity.SwingPoint;
-import com.market.streamline.entity.Zone;
+import com.market.streamline.entity.structure.SwingPoint;
+import com.market.streamline.entity.zone.Zone;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,8 +14,6 @@ import java.util.Optional;
 @Repository
 public interface ZoneRepository extends JpaRepository<Zone, Long> {
     // Basic CRUD methods are inherited from JpaRepository
-    List<Zone> findByStockSymbol(String stockSymbol);
-
     boolean existsByStockSymbolAndTimeframeAndCandleTimestampAndZoneType(
             String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType
     );

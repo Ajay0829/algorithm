@@ -1,7 +1,7 @@
 package com.market.streamline.repository;
 
-import com.market.streamline.entity.Trade;
-import com.market.streamline.entity.Zone;
+import com.market.streamline.entity.trade.Trade;
+import com.market.streamline.entity.zone.Zone;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

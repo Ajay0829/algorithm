@@ -1,10 +1,9 @@
 package com.market.streamline.service;
 
-import com.market.external.polygon.dto.Candle;
-import com.market.streamline.entity.BreakOfStructure;
-import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.SwingPoint;
-import com.market.streamline.entity.Zone;
+import com.market.streamline.entity.structure.BreakOfStructure;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.SwingPoint;
+import com.market.streamline.entity.zone.Zone;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.ZoneRepository;

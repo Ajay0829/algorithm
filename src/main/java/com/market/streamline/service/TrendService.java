@@ -1,10 +1,10 @@
 package com.market.streamline.service;
 
-import com.market.common.SwingType;
-import com.market.streamline.entity.BreakOfStructure;
-import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.SwingPoint;
-import com.market.streamline.entity.Trend;
+import com.market.streamline.entity.structure.SwingType;
+import com.market.streamline.entity.structure.BreakOfStructure;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.SwingPoint;
+import com.market.streamline.entity.structure.Trend;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.SwingPointRepository;

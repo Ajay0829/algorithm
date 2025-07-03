@@ -1,6 +1,6 @@
 package com.market.streamline.repository;
 
-import com.market.streamline.entity.CandleEntity;
+import com.market.streamline.entity.structure.CandleEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -35,11 +35,6 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
     );
 
     CandleEntity findTopByStockSymbolAndTimeframeAndCandleTimestampOrderByCandleTimestampDesc(
-        String stockSymbol, String timeframe, LocalDateTime timestamp
-    );
-
-    // Find the earliest candle after the given timestamp
-    CandleEntity findTopByStockSymbolAndTimeframeAndCandleTimestampGreaterThanOrderByCandleTimestampAsc(
         String stockSymbol, String timeframe, LocalDateTime timestamp
     );
 
