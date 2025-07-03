@@ -48,9 +48,6 @@ public class CandleDataAggregationService {
     @Autowired
     private VolatilityRepository volatilityRepository;
 
-    @Autowired
-    private StockFeatureRepository stockFeatureRepository;
-
     /**
      * Generate initial aggregated data for a candle (excluding trade information)
      */
