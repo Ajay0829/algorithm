@@ -1,8 +1,8 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.Volatility;
-import com.market.streamline.entity.Zone;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.entity.zone.Zone;
 import com.market.streamline.repository.TradeRepository;
 import com.market.streamline.repository.VolatilityRepository;
 import com.market.streamline.repository.ZoneRepository;
@@ -47,6 +47,7 @@ public class TradeDetectorService {
         Optional<Zone> mayBeDemandZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "DEMAND", candleEntity.getCandleTimestamp());
         Optional<Zone> mayBeSupplyZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "SUPPLY", candleEntity.getCandleTimestamp());
 
+        // TODO: Decide proximity threshold to decide the trade
         // Check demand zones
         if (mayBeDemandZone.isPresent()) {
             Zone demandZone = mayBeDemandZone.get();

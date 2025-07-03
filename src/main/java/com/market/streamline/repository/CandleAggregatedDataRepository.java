@@ -1,6 +1,6 @@
 package com.market.streamline.repository;
 
-import com.market.streamline.entity.CandleAggregatedDataEntity;
+import com.market.streamline.entity.aggregation.CandleAggregatedDataEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

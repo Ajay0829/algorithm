@@ -1,13 +1,14 @@
 package com.market.streamline.service;
 
-import com.market.common.SwingType;
-import com.market.streamline.entity.BreakOfStructure;
-import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.SwingPoint;
-import com.market.streamline.entity.Volatility;
-import com.market.streamline.kafka.BOSEventProducer;
-import com.market.streamline.kafka.ChartAnnotationProducer;
-import com.market.streamline.model.BOSEvent;
+import com.market.streamline.entity.structure.SwingType;
+import com.market.streamline.entity.structure.BreakOfStructure;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.SwingPoint;
+import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.kafka.bos.BOSEventProducer;
+import com.market.streamline.plot.kafka.ChartAnnotationProducer;
+import com.market.streamline.kafka.model.BOSEvent;
+import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.SwingPointRepository;
 import com.market.streamline.repository.VolatilityRepository;

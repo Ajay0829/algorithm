@@ -2,15 +2,12 @@ package com.market;
 
 import com.market.external.polygon.dto.Candle;
 import com.market.external.polygon.service.PolygonService;
-import com.market.streamline.kafka.CandleEventConsumer;
-import com.market.streamline.kafka.CandleEventProducer;
-import com.market.streamline.model.CandleEvent;
-import com.market.streamline.util.CsvCandleLoader;
+import com.market.streamline.kafka.candle.CandleEventConsumer;
+import com.market.streamline.kafka.candle.CandleEventProducer;
+import com.market.streamline.kafka.model.CandleEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -57,24 +54,6 @@ public class MarketBatchStartupRunner {
         candleEventConsumer.setTotalEvents(allEvents.size(), stockSymbol);
         allEvents.forEach(candleEvent -> candleEventProducer.sendCandleEvent(candleEvent));
         System.out.println(allEvents.size() + " events published to Kafka topic 'candle-added' for " + stockSymbol);
-    }
-
-    public List<CandleEvent> runForCsv() {
-        // Single file mode
-        String csvFilePath = "/Users/aramapuram/AlgorithmicTrading/data/actual/Stocks/googl.us.csv";
-        String fileName = csvFilePath.substring(csvFilePath.lastIndexOf('/') + 1);
-        String stockSymbol = fileName.split("\\.")[0];
-
-        // Count total events (excluding header)
-        int totalEvents = 0;
-        try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
-            while (br.readLine() != null) totalEvents++;
-            totalEvents--; // exclude header
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        candleEventConsumer.setTotalEvents(totalEvents, stockSymbol);
-        return CsvCandleLoader.loadFromCsv(csvFilePath);
     }
 
     public List<CandleEvent> runForPolygon(String stockSymbol, String timeframe, String from, String to) {

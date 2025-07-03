@@ -1,7 +1,7 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.CandleEntity;
-import com.market.streamline.entity.Volatility;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.Volatility;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.VolatilityRepository;
 import org.springframework.stereotype.Service;

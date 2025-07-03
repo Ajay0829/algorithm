@@ -1,7 +1,12 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.*;
-import com.market.streamline.kafka.ChartAnnotationProducer;
+import com.market.streamline.entity.structure.BreakOfStructure;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.SwingPoint;
+import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.entity.trade.Trade;
+import com.market.streamline.entity.zone.Zone;
+import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.*;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -11,7 +16,6 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service

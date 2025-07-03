@@ -1,7 +1,12 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.*;
-import com.market.streamline.kafka.ChartAnnotationProducer;
+import com.market.streamline.entity.liquidity.Liquidity;
+import com.market.streamline.entity.liquidity.LiquiditySweep;
+import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.SwingPoint;
+import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.plot.kafka.ChartAnnotationProducer;
+import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.LiquidityRepository;
 import com.market.streamline.repository.LiquiditySweepRepository;
 import com.market.streamline.repository.VolatilityRepository;
