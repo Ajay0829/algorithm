@@ -28,10 +28,33 @@ public class CandleAggregatedDataCsvExporter {
 
                 // Write header
                 String[] header = {
-                    "stock_symbol", "timeframe", "candle_timestamp", "open", "close", "high", "low", "volume",
-                    "last_swing_high", "last_swing_low", "supply_price", "demand_price",
-                    "last_liquidity_sweep_type", "bos_direction", "buy_liquidity", "sell_liquidity",
-                    "volatility", "trade", "entry_price", "target_price", "stop_loss_price", "trade_result"
+                    "stock_symbol",
+                    "timeframe",
+                    "candle_timestamp",
+                    "open",
+                    "close",
+                    "high",
+                    "low",
+                    "volume",
+                    "last_swing_high",
+                    "last_swing_low",
+                    "supply_price",
+                    "supply_volume",
+                    "demand_price",
+                    "demand_volume",
+                    "bos_direction",
+                    "bos_volume",
+                    "last_liquidity_sweep_type",
+                    "buy_liquidity",
+                    "buy_liquidity_strength",
+                    "sell_liquidity",
+                    "sell_liquidity_strength",
+                    "volatility",
+                    "average_volume",
+                    "rsi14",
+                    "trade",
+                    "entry_price",
+                    "trade_result"
                 };
                 writer.writeNext(header);
 
@@ -49,17 +72,22 @@ public class CandleAggregatedDataCsvExporter {
                         String.valueOf(data.getLastSwingHigh()),
                         String.valueOf(data.getLastSwingLow()),
                         String.valueOf(data.getSupplyPrice()),
+                        String.valueOf(data.getSupplyVolume()),
                         String.valueOf(data.getDemandPrice()),
-                        String.valueOf(data.isLastLiquiditySweepType()),
-                        String.valueOf(data.isBosDirection()),
+                        String.valueOf(data.getDemandVolume()),
+                        data.getBosDirection(),
+                        String.valueOf(data.getBosVolume()),
+                        data.getLastLiquiditySweepType(),
                         String.valueOf(data.getBuyLiquidity()),
+                        String.valueOf(data.getBuyLiquidityStrength()),
                         String.valueOf(data.getSellLiquidity()),
+                        String.valueOf(data.getSellLiquidityStrength()),
                         String.valueOf(data.getVolatility()),
-                        data.getTrade() != null ? data.getTrade() : "",
+                        String.valueOf(data.getAverageVolume()),
+                        String.valueOf(data.getRsi14()),
+                        data.getTrade(),
                         String.valueOf(data.getEntryPrice()),
-                        String.valueOf(data.getTargetPrice()),
-                        String.valueOf(data.getStopLossPrice()),
-                        String.valueOf(data.isTradeResult())
+                        data.getTradeResult()
                     };
                     writer.writeNext(row);
                 }

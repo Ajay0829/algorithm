@@ -44,23 +44,44 @@ public class CandleAggregatedDataEntity {
     @Column(name = "supply_price")
     private double supplyPrice;
 
+    @Column(name = "supply_volume")
+    private double supplyVolume;
+
     @Column(name = "demand_price")
     private double demandPrice;
 
+    @Column(name = "demand_volume")
+    private double demandVolume;
+
     @Column(name = "last_liquidity_sweep_type")
-    private int lastLiquiditySweepType;
+    private String lastLiquiditySweepType;
 
     @Column(name = "bos_direction")
-    private int bosDirection;
+    private String bosDirection;
+
+    @Column(name = "bos_volume")
+    private double bosVolume;
 
     @Column(name = "buy_liquidity")
     private double buyLiquidity;
 
+    @Column(name = "buy_liquidity_strength")
+    private int buyLiquidityStrength;
+
     @Column(name = "sell_liquidity")
     private double sellLiquidity;
 
+    @Column(name = "sell_liquidity_strength")
+    private int sellLiquidityStrength;
+
     @Column(name = "volatility")
     private double volatility;
+
+    @Column(name = "average_volume")
+    private  double averageVolume;
+
+    @Column(name = "rsi_14")
+    private  double rsi14;
 
     @Column(name = "trade")
     private String trade;
@@ -68,19 +89,11 @@ public class CandleAggregatedDataEntity {
     @Column(name = "entry_price")
     private double entryPrice;
 
-    @Column(name = "target_price")
-    private double targetPrice;
-
-    @Column(name = "stop_loss_price")
-    private double stopLossPrice;
-
     @Column(name = "trade_result")
-    private boolean tradeResult;
+    private String tradeResult;
 
-    // Default constructor
     public CandleAggregatedDataEntity() {}
 
-    // Getters and Setters
     public Long getId() {
         return id;
     }
@@ -177,6 +190,14 @@ public class CandleAggregatedDataEntity {
         this.supplyPrice = supplyPrice;
     }
 
+    public double getSupplyVolume() {
+        return supplyVolume;
+    }
+
+    public void setSupplyVolume(double supplyVolume) {
+        this.supplyVolume = supplyVolume;
+    }
+
     public double getDemandPrice() {
         return demandPrice;
     }
@@ -185,20 +206,36 @@ public class CandleAggregatedDataEntity {
         this.demandPrice = demandPrice;
     }
 
-    public int getLastLiquiditySweepType() {
+    public double getDemandVolume() {
+        return demandVolume;
+    }
+
+    public void setDemandVolume(double demandVolume) {
+        this.demandVolume = demandVolume;
+    }
+
+    public String getLastLiquiditySweepType() {
         return lastLiquiditySweepType;
     }
 
-    public void setLastLiquiditySweepType(int lastLiquiditySweepType) {
+    public void setLastLiquiditySweepType(String lastLiquiditySweepType) {
         this.lastLiquiditySweepType = lastLiquiditySweepType;
     }
 
-    public int getBosDirection() {
+    public String getBosDirection() {
         return bosDirection;
     }
 
-    public void setBosDirection(int bosDirection) {
+    public void setBosDirection(String bosDirection) {
         this.bosDirection = bosDirection;
+    }
+
+    public double getBosVolume() {
+        return bosVolume;
+    }
+
+    public void setBosVolume(double bosVolume) {
+        this.bosVolume = bosVolume;
     }
 
     public double getBuyLiquidity() {
@@ -209,6 +246,14 @@ public class CandleAggregatedDataEntity {
         this.buyLiquidity = buyLiquidity;
     }
 
+    public int getBuyLiquidityStrength() {
+        return buyLiquidityStrength;
+    }
+
+    public void setBuyLiquidityStrength(int buyLiquidityStrength) {
+        this.buyLiquidityStrength = buyLiquidityStrength;
+    }
+
     public double getSellLiquidity() {
         return sellLiquidity;
     }
@@ -217,12 +262,36 @@ public class CandleAggregatedDataEntity {
         this.sellLiquidity = sellLiquidity;
     }
 
+    public int getSellLiquidityStrength() {
+        return sellLiquidityStrength;
+    }
+
+    public void setSellLiquidityStrength(int sellLiquidityStrength) {
+        this.sellLiquidityStrength = sellLiquidityStrength;
+    }
+
     public double getVolatility() {
         return volatility;
     }
 
     public void setVolatility(double volatility) {
         this.volatility = volatility;
+    }
+
+    public double getAverageVolume() {
+        return averageVolume;
+    }
+
+    public void setAverageVolume(double averageVolume) {
+        this.averageVolume = averageVolume;
+    }
+
+    public double getRsi14() {
+        return rsi14;
+    }
+
+    public void setRsi14(double rsi14) {
+        this.rsi14 = rsi14;
     }
 
     public String getTrade() {
@@ -241,27 +310,11 @@ public class CandleAggregatedDataEntity {
         this.entryPrice = entryPrice;
     }
 
-    public double getTargetPrice() {
-        return targetPrice;
-    }
-
-    public void setTargetPrice(double targetPrice) {
-        this.targetPrice = targetPrice;
-    }
-
-    public double getStopLossPrice() {
-        return stopLossPrice;
-    }
-
-    public void setStopLossPrice(double stopLossPrice) {
-        this.stopLossPrice = stopLossPrice;
-    }
-
-    public boolean isTradeResult() {
+    public String getTradeResult() {
         return tradeResult;
     }
 
-    public void setTradeResult(boolean tradeResult) {
+    public void setTradeResult(String tradeResult) {
         this.tradeResult = tradeResult;
     }
 }

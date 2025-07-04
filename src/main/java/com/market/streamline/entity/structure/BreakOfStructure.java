@@ -27,6 +27,9 @@ public class BreakOfStructure {
     @Column(name = "type")
     private String type;
 
+    @Column(name = "bos_volume")
+    private Double bosVolume;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(
         name = "weak_swing_point",
@@ -47,7 +50,7 @@ public class BreakOfStructure {
     )
     private SwingPoint strongSwingPoint;
 
-    public BreakOfStructure(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String direction, String type, SwingPoint weakSwingPoint, SwingPoint strongSwingPoint) {
+    public BreakOfStructure(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String direction, String type, SwingPoint weakSwingPoint, SwingPoint strongSwingPoint, Double bosVolume) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.candleTimestamp = candleTimestamp;
@@ -55,6 +58,7 @@ public class BreakOfStructure {
         this.type = type;
         this.weakSwingPoint = weakSwingPoint;
         this.strongSwingPoint = strongSwingPoint;
+        this.bosVolume = bosVolume;
     }
 
     public BreakOfStructure() {
@@ -85,6 +89,14 @@ public class BreakOfStructure {
         return type;
     }
 
+    public Double getBosVolume() {
+        return bosVolume;
+    }
+
+    public void setBosVolume(Double bosVolume) {
+        this.bosVolume = bosVolume;
+    }
+
     public SwingPoint getWeakSwingPoint() {
         return weakSwingPoint;
     }
@@ -93,4 +105,3 @@ public class BreakOfStructure {
         return strongSwingPoint;
     }
 }
-

@@ -3,13 +3,12 @@ package com.market.streamline.service;
 import com.market.streamline.entity.liquidity.Liquidity;
 import com.market.streamline.entity.liquidity.LiquiditySweep;
 import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.structure.SwingPoint;
-import com.market.streamline.entity.structure.Volatility;
-import com.market.streamline.plot.kafka.ChartAnnotationProducer;
 import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.LiquidityRepository;
 import com.market.streamline.repository.LiquiditySweepRepository;
-import com.market.streamline.repository.VolatilityRepository;
+import com.market.streamline.repository.MarketIndicatorsRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,25 +19,21 @@ public class LiquidityService {
 
     private final LiquiditySweepRepository liquiditySweepRepository;
     private final LiquidityRepository liquidityRepository;
-    private final VolatilityRepository volatilityRepository;
-    private final ChartAnnotationProducer chartAnnotationProducer;
     private final ChartAnnotationService chartAnnotationService;
+    private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public LiquidityService(LiquiditySweepRepository liquiditySweepRepository, LiquidityRepository liquidityRepository, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer, ChartAnnotationService chartAnnotationService) {
+    public LiquidityService(LiquiditySweepRepository liquiditySweepRepository, LiquidityRepository liquidityRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.liquiditySweepRepository = liquiditySweepRepository;
         this.liquidityRepository = liquidityRepository;
-        this.volatilityRepository = volatilityRepository;
-        this.chartAnnotationProducer = chartAnnotationProducer;
         this.chartAnnotationService = chartAnnotationService;
+        this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
     public void checkLiquiditySweep(SwingPoint swingPoint) {
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
-                swingPoint.getStockSymbol(),
-                swingPoint.getTimeframe()
-        );
 
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(swingPoint.getStockSymbol(), swingPoint.getTimeframe());
+
+        if (marketIndicators == null) {
             return;
         }
         // Add check to fetch only valid liquidities,
@@ -55,7 +50,7 @@ public class LiquidityService {
                     swingPoint.getTimeframe(),
                     swingPoint.getCandleTimestamp(),
                     getSweepType(swingPoint),
-                    getLiquidityPrice(swingPoint, volatility.getVolatility()),
+                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility()),
                     1
             );
             liquidityRepository.save(liquidity);
@@ -74,7 +69,7 @@ public class LiquidityService {
                     swingPoint.getCandleTimestamp(),
                     getSweepType(swingPoint),
                     0.0,
-                    getLiquidityPrice(swingPoint, volatility.getVolatility()),
+                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility()),
                     liquidity.getStrength()
             );
             liquiditySweepRepository.save(liquiditySweep);
@@ -85,20 +80,20 @@ public class LiquidityService {
             sendLiquidityChartEvent(liquidity, "swept");
             liquidityRepository.delete(liquidity);
         } else {
-            handleAddOrUpdateLiquidityZone(swingPoint, liquidity, volatility);
+            handleAddOrUpdateLiquidityZone(swingPoint, liquidity, marketIndicators);
         }
     }
 
-    private void handleAddOrUpdateLiquidityZone(SwingPoint swingPoint, Liquidity liquidity, Volatility volatility) {
+    private void handleAddOrUpdateLiquidityZone(SwingPoint swingPoint, Liquidity liquidity, MarketIndicators marketIndicators) {
         // No liquidity sweep, check to reuse or add a new liquidity zone
-        if (shouldAddNewLiquidityZone(swingPoint, liquidity, volatility)) {
+        if (shouldAddNewLiquidityZone(swingPoint, liquidity, marketIndicators)) {
             // No tap and price is far from the last liquidity zone
             Liquidity liquidityZone = new Liquidity(
                     swingPoint.getStockSymbol(),
                     swingPoint.getTimeframe(),
                     swingPoint.getCandleTimestamp(),
                     getSweepType(swingPoint),
-                    getLiquidityPrice(swingPoint, volatility.getVolatility()),
+                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility()),
                     1
             );
             liquidityRepository.save(liquidityZone);
@@ -109,10 +104,6 @@ public class LiquidityService {
             // No Tap but price is nearby the old liquidity zone
             // increase the strength of the last liquidity zone
             liquidity.setStrength(liquidity.getStrength() + 1);
-            // Liquidity pointing to latest swing point.
-            // liquidity.setCandleTimestamp(swingPoint.getCandleTimestamp());
-            // double liquidityPrice = getBestLiquidityPrice(swingPoint, liquidity, volatility.getVolatility());
-            // liquidity.setPrice(liquidityPrice);
             liquidityRepository.save(liquidity);
 
             // Send chart annotation for updated liquidity zone
@@ -154,19 +145,16 @@ public class LiquidityService {
         }
     }
 
-    private boolean shouldAddNewLiquidityZone(SwingPoint swingPoint, Liquidity liquidity, Volatility volatility) {
+    private boolean shouldAddNewLiquidityZone(SwingPoint swingPoint, Liquidity liquidity, MarketIndicators marketIndicators) {
         double distance = Math.abs(swingPoint.getPrice() - liquidity.getPrice());
         double percentageDistance = (distance / liquidity.getPrice()) * 100;
-        return percentageDistance > 2 * volatility.getVolatility();
+        return percentageDistance > 2 * marketIndicators.getVolatility();
     }
 
     public void invalidateLiquidityZones(CandleEntity candleEntity, boolean isHighCheck) {
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
-                candleEntity.getStockSymbol(),
-                candleEntity.getTimeframe()
-        );
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
 
-        if (volatility == null) {
+        if (marketIndicators == null) {
             return;
         }
 
@@ -182,7 +170,7 @@ public class LiquidityService {
             if (isHighCheck) {
                 double price = candleEntity.getHigh();
                 double liquidityPrice = liquidity.getPrice();
-                if (price > liquidityPrice* (1 + volatility.getVolatility() / 100)) {
+                if (price > liquidityPrice* (1 + marketIndicators.getVolatility() / 100)) {
                     // Send chart annotation for liquidity deletion before deleting
                     sendLiquidityChartEvent(liquidity, "deleted");
                     liquidityRepository.delete(liquidity);
@@ -190,7 +178,7 @@ public class LiquidityService {
             } else {
                 double price = candleEntity.getLow();
                 double liquidityPrice = liquidity.getPrice();
-                if (price < liquidityPrice * (1 - volatility.getVolatility() / 100)) {
+                if (price < liquidityPrice * (1 - marketIndicators.getVolatility() / 100)) {
                     // Send chart annotation for liquidity deletion before deleting
                     sendLiquidityChartEvent(liquidity, "deleted");
                     liquidityRepository.delete(liquidity);

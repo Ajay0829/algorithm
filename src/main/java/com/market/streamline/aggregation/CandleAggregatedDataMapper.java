@@ -20,17 +20,22 @@ public class CandleAggregatedDataMapper {
         entity.setLastSwingHigh(data.getLastSwingHigh());
         entity.setLastSwingLow(data.getLastSwingLow());
         entity.setSupplyPrice(data.getSupplyPrice());
+        entity.setSupplyVolume(data.getSupplyVolume());
         entity.setDemandPrice(data.getDemandPrice());
-        entity.setLastLiquiditySweepType(data.isLastLiquiditySweepType());
-        entity.setBosDirection(data.isBosDirection());
+        entity.setDemandVolume(data.getDemandVolume());
+        entity.setLastLiquiditySweepType(data.getLastLiquiditySweepType());
+        entity.setBosDirection(data.getBosDirection());
+        entity.setBosVolume(data.getBosVolume());
         entity.setBuyLiquidity(data.getBuyLiquidity());
+        entity.setBuyLiquidityStrength(data.getBuyLiquidityStrength());
         entity.setSellLiquidity(data.getSellLiquidity());
+        entity.setSellLiquidityStrength(data.getSellLiquidityStrength());
         entity.setVolatility(data.getVolatility());
+        entity.setAverageVolume(data.getAverageVolume());
+        entity.setRsi14(data.getRsi14());
         entity.setTrade(data.getTrade());
         entity.setEntryPrice(data.getEntryPrice());
-        entity.setTargetPrice(data.getTargetPrice());
-        entity.setStopLossPrice(data.getStopLossPrice());
-        entity.setTradeResult(data.isTradeResult());
+        entity.setTradeResult(data.getTradeResult());
 
         return entity;
     }
@@ -49,17 +54,22 @@ public class CandleAggregatedDataMapper {
         data.setLastSwingHigh(entity.getLastSwingHigh());
         data.setLastSwingLow(entity.getLastSwingLow());
         data.setSupplyPrice(entity.getSupplyPrice());
+        data.setSupplyVolume(entity.getSupplyVolume());
         data.setDemandPrice(entity.getDemandPrice());
+        data.setDemandVolume(entity.getDemandVolume());
         data.setLastLiquiditySweepType(entity.getLastLiquiditySweepType());
         data.setBosDirection(entity.getBosDirection());
+        data.setBosVolume(entity.getBosVolume());
         data.setBuyLiquidity(entity.getBuyLiquidity());
+        data.setBuyLiquidityStrength(entity.getBuyLiquidityStrength());
         data.setSellLiquidity(entity.getSellLiquidity());
+        data.setSellLiquidityStrength(entity.getSellLiquidityStrength());
         data.setVolatility(entity.getVolatility());
+        data.setAverageVolume(entity.getAverageVolume());
+        data.setRsi14(entity.getRsi14());
         data.setTrade(entity.getTrade());
         data.setEntryPrice(entity.getEntryPrice());
-        data.setTargetPrice(entity.getTargetPrice());
-        data.setStopLossPrice(entity.getStopLossPrice());
-        data.setTradeResult(entity.isTradeResult());
+        data.setTradeResult(entity.getTradeResult());
 
         return data;
     }

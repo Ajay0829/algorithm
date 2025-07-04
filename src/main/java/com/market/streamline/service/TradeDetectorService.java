@@ -1,10 +1,10 @@
 package com.market.streamline.service;
 
 import com.market.streamline.entity.structure.CandleEntity;
-import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.zone.Zone;
+import com.market.streamline.repository.MarketIndicatorsRepository;
 import com.market.streamline.repository.TradeRepository;
-import com.market.streamline.repository.VolatilityRepository;
 import com.market.streamline.repository.ZoneRepository;
 import org.springframework.stereotype.Service;
 
@@ -16,13 +16,13 @@ public class TradeDetectorService {
     private final TradeSimulationService tradeSimulationService;
     private final ZoneRepository zoneRepository;
     private final TradeRepository tradeRepository;
-    private final VolatilityRepository volatilityRepository;
+    private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public TradeDetectorService(TradeSimulationService tradeSimulationService, ZoneRepository zoneRepository, TradeRepository tradeRepository, VolatilityRepository volatilityRepository) {
+    public TradeDetectorService(TradeSimulationService tradeSimulationService, ZoneRepository zoneRepository, TradeRepository tradeRepository, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.tradeSimulationService = tradeSimulationService;
         this.zoneRepository = zoneRepository;
         this.tradeRepository = tradeRepository;
-        this.volatilityRepository = volatilityRepository;
+        this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
     public void findTradeOpportunity(CandleEntity candleEntity, boolean isHighCheck) {
@@ -34,13 +34,12 @@ public class TradeDetectorService {
             return; // Skip if there's already an active trade
         }
 
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
-
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
+        if (marketIndicators == null) {
             return;
         }
 
-        double volatilityValue = volatility.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility();
 
         double currentPrice = isHighCheck ? candleEntity.getHigh() : candleEntity.getLow();
 

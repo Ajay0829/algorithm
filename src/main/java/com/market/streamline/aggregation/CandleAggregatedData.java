@@ -13,37 +13,42 @@ public class CandleAggregatedData {
     private Double low;
     private Double volume;
 
+    // Swing points
     private double lastSwingHigh;
     private double lastSwingLow;
 
-    // Break of structure data
+    // Supply and demand data
     private double supplyPrice;
+    private double supplyVolume;
     private double demandPrice;
+    private double demandVolume;
 
+    // Break of structure (BoS) data
+    private String bosDirection;
+    private double bosVolume;
 
-    private int lastLiquiditySweepType;
-    private int bosDirection;
+    // Liquidity Sweep data
+    private String lastLiquiditySweepType;
 
+    // Liquidity data
     private double buyLiquidity;
+    private int buyLiquidityStrength;
     private double sellLiquidity;
+    private int sellLiquidityStrength;
 
-    // Trend data
+    // Indicators data
     private double volatility;
-    private String trade;
+    private double averageVolume;
+    private double rsi14;
 
     // Trade data
+    private String trade;
     private double entryPrice;
+    private String tradeResult;
 
-    // Volatility data
-    private double targetPrice;
+    public CandleAggregatedData() {
 
-    // Feature data
-    private double stopLossPrice;
-
-    private boolean tradeResult;
-
-    // Constructors
-    public CandleAggregatedData() {}
+    }
 
     public String getStockSymbol() {
         return stockSymbol;
@@ -133,6 +138,14 @@ public class CandleAggregatedData {
         this.supplyPrice = supplyPrice;
     }
 
+    public double getSupplyVolume() {
+        return supplyVolume;
+    }
+
+    public void setSupplyVolume(double supplyVolume) {
+        this.supplyVolume = supplyVolume;
+    }
+
     public double getDemandPrice() {
         return demandPrice;
     }
@@ -141,20 +154,36 @@ public class CandleAggregatedData {
         this.demandPrice = demandPrice;
     }
 
-    public int isLastLiquiditySweepType() {
-        return lastLiquiditySweepType;
+    public double getDemandVolume() {
+        return demandVolume;
     }
 
-    public void setLastLiquiditySweepType(int lastLiquiditySweepType) {
-        this.lastLiquiditySweepType = lastLiquiditySweepType;
+    public void setDemandVolume(double demandVolume) {
+        this.demandVolume = demandVolume;
     }
 
-    public int isBosDirection() {
+    public String getBosDirection() {
         return bosDirection;
     }
 
-    public void setBosDirection(int bosDirection) {
+    public void setBosDirection(String bosDirection) {
         this.bosDirection = bosDirection;
+    }
+
+    public double getBosVolume() {
+        return bosVolume;
+    }
+
+    public void setBosVolume(double bosVolume) {
+        this.bosVolume = bosVolume;
+    }
+
+    public String getLastLiquiditySweepType() {
+        return lastLiquiditySweepType;
+    }
+
+    public void setLastLiquiditySweepType(String lastLiquiditySweepType) {
+        this.lastLiquiditySweepType = lastLiquiditySweepType;
     }
 
     public double getBuyLiquidity() {
@@ -165,6 +194,14 @@ public class CandleAggregatedData {
         this.buyLiquidity = buyLiquidity;
     }
 
+    public int getBuyLiquidityStrength() {
+        return buyLiquidityStrength;
+    }
+
+    public void setBuyLiquidityStrength(int buyLiquidityStrength) {
+        this.buyLiquidityStrength = buyLiquidityStrength;
+    }
+
     public double getSellLiquidity() {
         return sellLiquidity;
     }
@@ -173,12 +210,36 @@ public class CandleAggregatedData {
         this.sellLiquidity = sellLiquidity;
     }
 
+    public int getSellLiquidityStrength() {
+        return sellLiquidityStrength;
+    }
+
+    public void setSellLiquidityStrength(int sellLiquidityStrength) {
+        this.sellLiquidityStrength = sellLiquidityStrength;
+    }
+
     public double getVolatility() {
         return volatility;
     }
 
     public void setVolatility(double volatility) {
         this.volatility = volatility;
+    }
+
+    public double getAverageVolume() {
+        return averageVolume;
+    }
+
+    public void setAverageVolume(double averageVolume) {
+        this.averageVolume = averageVolume;
+    }
+
+    public double getRsi14() {
+        return rsi14;
+    }
+
+    public void setRsi14(double rsi14) {
+        this.rsi14 = rsi14;
     }
 
     public String getTrade() {
@@ -197,27 +258,11 @@ public class CandleAggregatedData {
         this.entryPrice = entryPrice;
     }
 
-    public double getTargetPrice() {
-        return targetPrice;
-    }
-
-    public void setTargetPrice(double targetPrice) {
-        this.targetPrice = targetPrice;
-    }
-
-    public double getStopLossPrice() {
-        return stopLossPrice;
-    }
-
-    public void setStopLossPrice(double stopLossPrice) {
-        this.stopLossPrice = stopLossPrice;
-    }
-
-    public boolean isTradeResult() {
+    public String getTradeResult() {
         return tradeResult;
     }
 
-    public void setTradeResult(boolean tradeResult) {
+    public void setTradeResult(String tradeResult) {
         this.tradeResult = tradeResult;
     }
 }

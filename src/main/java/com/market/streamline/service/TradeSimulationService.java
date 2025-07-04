@@ -1,12 +1,12 @@
 package com.market.streamline.service;
 
 import com.market.streamline.entity.structure.CandleEntity;
+import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.trade.Trade;
-import com.market.streamline.entity.structure.Volatility;
 import com.market.streamline.entity.zone.Zone;
 import com.market.streamline.plot.ChartAnnotationService;
+import com.market.streamline.repository.MarketIndicatorsRepository;
 import com.market.streamline.repository.TradeRepository;
-import com.market.streamline.repository.VolatilityRepository;
 import com.market.streamline.repository.ZoneRepository;
 import org.springframework.stereotype.Service;
 
@@ -16,15 +16,15 @@ import java.util.Optional;
 public class TradeSimulationService {
 
     private final TradeRepository tradeRepository;
-    private final VolatilityRepository volatilityRepository;
     private final ZoneRepository zoneRepository;
     private final ChartAnnotationService chartAnnotationService;
+    private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public TradeSimulationService(TradeRepository tradeRepository, VolatilityRepository volatilityRepository, ZoneRepository zoneRepository, ChartAnnotationService chartAnnotationService) {
+    public TradeSimulationService(TradeRepository tradeRepository, ZoneRepository zoneRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.tradeRepository = tradeRepository;
-        this.volatilityRepository = volatilityRepository;
         this.zoneRepository = zoneRepository;
         this.chartAnnotationService = chartAnnotationService;
+        this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
     public void processActiveTrade(CandleEntity candleEntity, boolean isHighCheck) {
@@ -62,18 +62,16 @@ public class TradeSimulationService {
         if (zone.getType().equals("INVALID")) {
             chartAnnotationService.processZone(zone, "deleted");
         }
-        System.out.println("Trade Closed: " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade closed. Symbol: " + candleEntity.getStockSymbol() + ", Result: " + trade.getResult() + ", Entry: " + trade.getEntryPrice() + ", SL: " + trade.getStopLoss() + ", TP: " + trade.getTakeProfit() + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " (Strength: " + zone.getStrength() + ")");
         chartAnnotationService.processTrade(trade, candleEntity, "updated");
     }
 
     public void addTrade(CandleEntity candleEntity, Zone zone, double entryPrice) {
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
-
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
+        if (marketIndicators == null) {
             return;
         }
 
-        double volatilityValue = volatility.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility();
         double stopLossPrice, targetPrice;
         String zoneType = zone.getZoneType();
 
@@ -103,7 +101,5 @@ public class TradeSimulationService {
         tradeRepository.save(trade);
 
         chartAnnotationService.processTrade(trade, candleEntity, "executed");
-
-        System.out.println("TRADE TAKEN: " + trade.getTradeType() + " " + candleEntity.getTimeframe() + " trade opened. Symbol: " + candleEntity.getStockSymbol() + ", Entry: " + entryPrice + ", SL: " + stopLossPrice + ", TP: " + targetPrice + ", Zone: " + zone.getZoneType() + " " + zone.getNearPoint() + " (Strength: " + zone.getStrength() + ")");
     }
 }
