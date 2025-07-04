@@ -46,10 +46,6 @@ public class CandleEventConsumer {
     @Autowired
     private TradeDetectorService tradeDetectorService;
     @Autowired
-    private VolatilityRepository volatilityRepository;
-    @Autowired
-    private VolatilityCalculationService volatilityCalculationService;
-    @Autowired
     private ImpulseZoneService impulseZoneService;
     @Autowired
     private TradeSimulationService tradeSimulationService;
@@ -76,6 +72,10 @@ public class CandleEventConsumer {
     private int eventCount = 0;
     private int totalEvents = 0;
     private String stockSymbol = null;
+    @Autowired
+    private MarketIndicatorsCalculationService marketIndicatorsCalculationService;
+    @Autowired
+    private MarketIndicatorsRepository marketIndicatorsRepository;
 
 
     public void setTotalEvents(int total, String symbol) {
@@ -118,8 +118,8 @@ public class CandleEventConsumer {
 
     private void processCandleClosure(CandleEntity candleEntity) {
         impulseZoneService.verifyZoneCorrectness(candleEntity);
-        volatilityCalculationService.calculateVolatility(candleEntity);
-//        saveCandleAggregatedData(candleEntity);
+        marketIndicatorsCalculationService.calculateIndicators(candleEntity);
+        saveCandleAggregatedData(candleEntity);
     }
 
     private void processCandle(CandleEntity candleEntity) {
@@ -183,11 +183,11 @@ public class CandleEventConsumer {
         breakOfStructureRepository.deleteAllInBatch();
         zoneRepository.deleteAllInBatch();
         trendRepository.deleteAllInBatch();
-        volatilityRepository.deleteAllInBatch();
         tradeRepository.deleteAllInBatch();
         liquidityRepository.deleteAllInBatch();
         liquiditySweepRepository.deleteAllInBatch();
         candleAggregatedDataRepository.deleteAllInBatch();
+        marketIndicatorsRepository.deleteAllInBatch();
 
         // TODO: Update this logic to clear old messages from Kafka queues
         System.out.println("Clearing Kafka queues after processing completion...");

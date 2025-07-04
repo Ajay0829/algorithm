@@ -44,4 +44,12 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
     Optional<CandleEntity> findByStockSymbolAndTimeframeAndCandleTimestamp(
         String stockSymbol, String timeframe, LocalDateTime candleTimestamp
     );
+
+    @Query("SELECT COALESCE(SUM(c.volume), 0) FROM CandleEntity c WHERE c.stockSymbol = :stockSymbol AND c.timeframe = :timeframe AND c.candleTimestamp >= :startTimestamp AND c.candleTimestamp <= :endTimestamp")
+    Double sumVolumesBetweenTimestamps(
+        @Param("stockSymbol") String stockSymbol,
+        @Param("timeframe") String timeframe,
+        @Param("startTimestamp") LocalDateTime startTimestamp,
+        @Param("endTimestamp") LocalDateTime endTimestamp
+    );
 }

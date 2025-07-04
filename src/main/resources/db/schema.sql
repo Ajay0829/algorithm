@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS bos (
     type VARCHAR(16),
     weak_swing_point INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     strong_swing_point INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
+    bos_volume DOUBLE PRECISION,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, type)
 );
 
@@ -68,17 +69,19 @@ CREATE INDEX IF NOT EXISTS idx_trends_symbol_timeframe_ts
     ON trends (stock_symbol, timeframe, candle_timestamp);
 
 
--- Table: volatility
-CREATE TABLE IF NOT EXISTS volatility (
+-- Table: market indicators
+CREATE TABLE IF NOT EXISTS market_indicators (
     id SERIAL PRIMARY KEY,
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
     volatility DOUBLE PRECISION NOT NULL,
+    average_volume DOUBLE PRECISION NOT NULL,
+    rsi14 DOUBLE PRECISION NOT NULL,
     UNIQUE (stock_symbol, timeframe)
 );
 
-CREATE INDEX IF NOT EXISTS idx_volatility_symbol_timeframe
-    ON volatility (stock_symbol, timeframe);
+CREATE INDEX IF NOT EXISTS idx_market_indicators_symbol_timeframe
+    ON market_indicators (stock_symbol, timeframe);
 
 
 -- Table: zones
@@ -165,9 +168,23 @@ CREATE TABLE IF NOT EXISTS candle_aggregated_data (
     volume DOUBLE PRECISION,
     last_swing_high DOUBLE PRECISION,
     last_swing_low DOUBLE PRECISION,
-    supply_price DOUBLE PRECISION,
-    demand_price DOUBLE PRECISION,
     last_liquidity_sweep_type INTEGER,
+    supply_price DOUBLE PRECISION,
+    supply_volume DOUBLE PRECISION,
+    demand_price DOUBLE PRECISION,
+    demand_volume DOUBLE PRECISION,
+    bos_direction VARCHAR(255),
+    bos_volume DOUBLE PRECISION,
+    buy_liquidity DOUBLE PRECISION,
+    buy_liquidity_strength INTEGER,
+    sell_liquidity DOUBLE PRECISION,
+    sell_liquidity_strength INTEGER,
+    volatility DOUBLE PRECISION,
+    average_volume DOUBLE PRECISION,
+    rsi14 DOUBLE PRECISION,
+    trade VARCHAR(255),
+    entry_price DOUBLE PRECISION,
+    trade_result VARCHAR(255),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
     );

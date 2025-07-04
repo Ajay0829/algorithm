@@ -1,9 +1,6 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.structure.BreakOfStructure;
-import com.market.streamline.entity.structure.CandleEntity;
-import com.market.streamline.entity.structure.SwingPoint;
-import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.entity.structure.*;
 import com.market.streamline.entity.trade.Trade;
 import com.market.streamline.entity.zone.Zone;
 import com.market.streamline.plot.ChartAnnotationService;
@@ -25,20 +22,20 @@ public class ImpulseZoneService {
     private final ZoneRepository zoneRepository;
     private final CandleRepository candleRepository;
     private final Environment env;
-    private final VolatilityRepository volatilityRepository;
     private final ChartAnnotationService chartAnnotationService;
     private final TradeSimulationService tradeSimulationService;
     private final TradeRepository tradeRepository;
+    private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public ImpulseZoneService(BreakOfStructureRepository breakOfStructureRepository, ZoneRepository zoneRepository, CandleRepository candleRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationService chartAnnotationService, TradeSimulationService tradeSimulationService, TradeRepository tradeRepository) {
+    public ImpulseZoneService(BreakOfStructureRepository breakOfStructureRepository, ZoneRepository zoneRepository, CandleRepository candleRepository, Environment env, ChartAnnotationService chartAnnotationService, TradeSimulationService tradeSimulationService, TradeRepository tradeRepository, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.zoneRepository = zoneRepository;
         this.candleRepository = candleRepository;
         this.env = env;
-        this.volatilityRepository = volatilityRepository;
         this.chartAnnotationService = chartAnnotationService;
         this.tradeSimulationService = tradeSimulationService;
         this.tradeRepository = tradeRepository;
+        this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
     public void verifyZoneCorrectness(CandleEntity candleEntity) {
@@ -51,16 +48,12 @@ public class ImpulseZoneService {
             return;
         }
 
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
-                candleEntity.getStockSymbol(),
-                candleEntity.getTimeframe()
-        );
-
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
+        if (marketIndicators == null) {
             return; // No volatility data available for the stock and timeframe
         }
 
-        double volatilityValue = volatility.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility();
 
         // Don't add overlapping zones.
         // Ideally we want to store the latest zone,
@@ -83,15 +76,13 @@ public class ImpulseZoneService {
                         existingZone
                 );
 
-                System.out.println("Overlapping zone found: " + existingZone.getZoneType() + " " + existingZone.getNearPoint() + " - " + existingZone.getFarPoint() + " with new zone: " + zone.getNearPoint() + " - " + zone.getFarPoint());
-
                 if (existingTrade.isPresent() && existingTrade.get().getIsActive()) {
-                    System.out.println("Active trade exists for the existing zone, not adding new zone: " + existingZone.getZoneType() + " " + existingZone.getNearPoint() + " - " + existingZone.getFarPoint());
-                    // Can't delete the already active trade zone, just delete the new zone.
+                    zoneRepository.delete(zone);
+                    return;
+                } else if (existingZone.getVolume() > zone.getVolume()){
                     zoneRepository.delete(zone);
                     return;
                 } else {
-                    System.out.println("No active trade exists for the existing zone, marking it as invalid: " + existingZone.getZoneType() + " " + existingZone.getNearPoint() + " - " + existingZone.getFarPoint());
                     existingZone.setType("INVALID");
                     zoneRepository.save(existingZone);
                     chartAnnotationService.processZone(existingZone, "deleted");
@@ -105,6 +96,9 @@ public class ImpulseZoneService {
             if (priceMovedEnough(zone.getFarPoint(), candleEntity.getClose(), volatilityValue, true)) {
                 // Zone is valid, update the zone
                 zone.setType("VALID");
+                LocalDateTime zoneStartTime = mapTimestampToHigherTimeframe(zone.getStrongSwingPoint());
+                Double total_volume = candleRepository.sumVolumesBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zoneStartTime, zone.getIdentifiedAt());
+                zone.setVolume(total_volume);
                 zoneRepository.save(zone);
             } else {
                 // Zone is invalid, remove it
@@ -115,6 +109,9 @@ public class ImpulseZoneService {
             if (priceMovedEnough(zone.getFarPoint(), candleEntity.getClose(), volatilityValue, false)) {
                 // Zone is valid, update the zone
                 zone.setType("VALID");
+                LocalDateTime zoneStartTime = mapTimestampToHigherTimeframe(zone.getStrongSwingPoint());
+                Double total_volume = candleRepository.sumVolumesBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zoneStartTime, zone.getIdentifiedAt());
+                zone.setVolume(total_volume);
                 zoneRepository.save(zone);
             } else {
                 zoneRepository.delete(zone);
@@ -187,16 +184,11 @@ public class ImpulseZoneService {
             return;
         }
 
-
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
-                swingPoint.getStockSymbol(),
-                higherTimeframe
-        );
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(swingPoint.getStockSymbol(), higherTimeframe);
+        if (marketIndicators == null) {
             return; // No volatility data available for the stock and timeframe
         }
-
-        double volatilityValue = volatility.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility();
 
         Optional<BreakOfStructure> breakOfStructure = breakOfStructureRepository.findFirstByStockSymbolAndTimeframeOrderByCandleTimestampDesc(
                 swingPoint.getStockSymbol(),
@@ -300,7 +292,6 @@ public class ImpulseZoneService {
                 0, // No of taps starts at 0
                 identifiedAt // When the zone was identified
         );
-        zoneRepository.save(zone);
         return Optional.of(zone);
     }
 

@@ -1,17 +1,12 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.structure.SwingType;
-import com.market.streamline.entity.structure.BreakOfStructure;
-import com.market.streamline.entity.structure.CandleEntity;
-import com.market.streamline.entity.structure.SwingPoint;
-import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.entity.structure.*;
 import com.market.streamline.kafka.bos.BOSEventProducer;
-import com.market.streamline.plot.kafka.ChartAnnotationProducer;
 import com.market.streamline.kafka.model.BOSEvent;
 import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.BreakOfStructureRepository;
+import com.market.streamline.repository.MarketIndicatorsRepository;
 import com.market.streamline.repository.SwingPointRepository;
-import com.market.streamline.repository.VolatilityRepository;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
@@ -25,31 +20,26 @@ public class BreakOfStructureService {
     private final SwingPointRepository swingPointRepository;
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
-    private final VolatilityRepository volatilityRepository;
-    private final ChartAnnotationProducer chartAnnotationProducer;
     private final ChartAnnotationService chartAnnotationService;
+    private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public BreakOfStructureService(BOSEventProducer bosEventProducer, SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer, ChartAnnotationService chartAnnotationService) {
+    public BreakOfStructureService(BOSEventProducer bosEventProducer, SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.bosEventProducer = bosEventProducer;
         this.swingPointRepository = swingPointRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
-        this.volatilityRepository = volatilityRepository;
-        this.chartAnnotationProducer = chartAnnotationProducer;
         this.chartAnnotationService = chartAnnotationService;
+        this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
     public void checkForBreakOfStructure(CandleEntity candleEntity, boolean isHighCheck) {
 
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
-                candleEntity.getStockSymbol(),
-                candleEntity.getTimeframe()
-        );
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
+        if (marketIndicators == null) {
             return;
         }
         boolean breakOfStructure = false;
-        double volatilityValue = volatility.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility();
 
         List<SwingPoint> swingPoints = swingPointRepository.findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDescIdDesc(candleEntity.getStockSymbol(), candleEntity.getTimeframe())
                 .stream().sorted(Comparator.comparing(SwingPoint::getCandleTimestamp)
@@ -84,7 +74,8 @@ public class BreakOfStructureService {
                     lastSwingType == SwingType.HIGH ? "BEARISH" : "BULLISH",
                     lastSwingType == SwingType.HIGH ? "LOW" : "HIGH",
                     weakSwingPoint,
-                    strongSwingPoint
+                    strongSwingPoint,
+                    candleEntity.getVolume()
             );
             breakOfStructureRepository.save(bos);
             chartAnnotationService.processBreakOfStructure(bos, "created");

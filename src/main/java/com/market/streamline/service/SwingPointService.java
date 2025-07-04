@@ -1,18 +1,11 @@
 package com.market.streamline.service;
 
-import com.market.streamline.entity.structure.SwingType;
-import com.market.streamline.entity.structure.BreakOfStructure;
-import com.market.streamline.entity.structure.CandleEntity;
-import com.market.streamline.entity.structure.SwingPoint;
-import com.market.streamline.entity.structure.Volatility;
+import com.market.streamline.entity.structure.*;
 import com.market.streamline.plot.kafka.ChartAnnotationProducer;
 import com.market.streamline.kafka.swingpoint.SwingPointEventProducer;
 import com.market.streamline.kafka.model.SwingPointEvent;
 import com.market.streamline.plot.ChartAnnotationService;
-import com.market.streamline.repository.BreakOfStructureRepository;
-import com.market.streamline.repository.CandleRepository;
-import com.market.streamline.repository.SwingPointRepository;
-import com.market.streamline.repository.VolatilityRepository;
+import com.market.streamline.repository.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.core.env.Environment;
@@ -30,31 +23,27 @@ public class SwingPointService {
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
     private final SwingPointEventProducer swingPointEventProducer;
-    private final VolatilityRepository volatilityRepository;
-    private final ChartAnnotationProducer chartAnnotationProducer;
     private final ChartAnnotationService chartAnnotationService;
+    private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer, VolatilityRepository volatilityRepository, ChartAnnotationProducer chartAnnotationProducer, ChartAnnotationService chartAnnotationService) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
         this.swingPointEventProducer = swingPointEventProducer;
-        this.volatilityRepository = volatilityRepository;
-        this.chartAnnotationProducer = chartAnnotationProducer;
         this.chartAnnotationService = chartAnnotationService;
+        this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
     public void confirmSwingPointIfAny(CandleEntity candleEntity, boolean isHighCheck) {
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
-                candleEntity.getStockSymbol(), candleEntity.getTimeframe()
-        );
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
+        if (marketIndicators == null) {
             // No volatility data available, cannot confirm swing point
             return;
         }
 
-        double volatilityValue = volatility.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility();
 
         Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDescIdDesc(
                 candleEntity.getStockSymbol(), candleEntity.getTimeframe()
@@ -89,14 +78,12 @@ public class SwingPointService {
 
     public Optional<SwingPoint> checkForSwingPoint(CandleEntity candleEntity, boolean isHighCheck) {
 
-        Volatility volatility = volatilityRepository.findByStockSymbolAndTimeframe(
-                candleEntity.getStockSymbol(), candleEntity.getTimeframe()
-        );
-        if (volatility == null) {
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(candleEntity.getStockSymbol(), candleEntity.getTimeframe());
+        if (marketIndicators == null) {
             // No volatility data available, cannot confirm swing point
             return Optional.empty();
         }
-        double volatilityValue = volatility.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility();
 
         // Fetch 2*N CandleEntity candles before this timestamp for the timeframe and stock
         List<CandleEntity> candleEntities = candleRepository.findRecentCandles(
