@@ -81,6 +81,8 @@ public class CandleEventConsumer {
     public void setTotalEvents(int total, String symbol) {
         this.totalEvents = total;
         this.stockSymbol = symbol;
+        this.eventCount = 0; // Reset event count for new stock
+        System.out.println("Set total events: " + total + " for symbol: " + symbol);
     }
 
     @KafkaListener(topics = "candle-added", groupId = "feature-extractor-group")
@@ -88,7 +90,6 @@ public class CandleEventConsumer {
         try {
             CandleEvent candleEvent = objectMapper.readValue(message, CandleEvent.class);
             CandleEntity candleEntity = getCandleEntity(candleEvent);
-            candleRepository.save(candleEntity);
             chartAnnotationService.processCandle(candleEntity, "created");
             processCandle(candleEntity);
             eventCount++;
@@ -123,6 +124,7 @@ public class CandleEventConsumer {
     }
 
     private void processCandle(CandleEntity candleEntity) {
+        candleRepository.save(candleEntity);
         boolean redCandle = isRedCandle(candleEntity);
         processCandlePoint(candleEntity, redCandle); // If Red Candle, Process High else Process Low
         processCandlePoint(candleEntity, !redCandle); // If Red Candle, Process Low next else Process High next
@@ -130,7 +132,8 @@ public class CandleEventConsumer {
     }
 
     private static CandleEntity getCandleEntity(CandleEvent candleEvent) {
-        LocalDateTime candleTime = LocalDateTime.parse(candleEvent.getCandleTimestamp(), DateTimeFormatter.ISO_DATE_TIME);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssXXX");
+        LocalDateTime candleTime = LocalDateTime.parse(candleEvent.getCandleTimestamp(), formatter);
         return new CandleEntity(
                 candleEvent.getStockSymbol(),
                 candleEvent.getTimeframe(),
@@ -146,7 +149,7 @@ public class CandleEventConsumer {
     private void saveCandleAggregatedData(CandleEntity candleEntity) {
 
         // TODO: Configure for multiple timeframes
-        if (Objects.equals(candleEntity.getTimeframe(), "1d")) {
+        if (Objects.equals(candleEntity.getTimeframe(), "1h")) {
             CandleAggregatedData candleAggregatedData = candleDataAggregationService.generateInitialAggregatedData(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), candleEntity.getCandleTimestamp());
             CandleAggregatedDataEntity aggregatedEntity = candleAggregatedDataMapper.toEntity(candleAggregatedData);
             candleAggregatedDataRepository.save(aggregatedEntity);
@@ -155,7 +158,7 @@ public class CandleEventConsumer {
 
     private void processEndOfEvents() {
         // TODO: Configure for multiple timeframes
-        List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1d");
+        List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1h");
         List<CandleAggregatedData> finalData = allAggregatedData.stream().map(
                 candleAggregatedDataMapper::fromEntity
         ).toList();
@@ -188,9 +191,5 @@ public class CandleEventConsumer {
         liquiditySweepRepository.deleteAllInBatch();
         candleAggregatedDataRepository.deleteAllInBatch();
         marketIndicatorsRepository.deleteAllInBatch();
-
-        // TODO: Update this logic to clear old messages from Kafka queues
-        System.out.println("Clearing Kafka queues after processing completion...");
-        kafkaQueueClearService.clearAllQueues();
     }
 }

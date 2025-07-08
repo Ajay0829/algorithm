@@ -11,16 +11,14 @@ import java.util.Optional;
 
 @Repository
 public interface TradeRepository extends JpaRepository<Trade, Long> {
-    // Find active trades for a specific stock symbol and timeframe
-    List<Trade> findByStockSymbolAndTimeframeAndIsActiveTrue(String stockSymbol, String timeframe);
 
     // Find any active trade for a specific stock symbol and timeframe
     Optional<Trade> findFirstByStockSymbolAndTimeframeAndIsActiveTrue(String stockSymbol, String timeframe);
 
-    // Method to check if ANY trade exists at a specific timestamp (regardless of active status)
-    Optional<Trade> findFirstByStockSymbolAndTimeframeAndTimestamp(String stockSymbol, String timeframe, LocalDateTime timestamp);
-
-    Optional<Trade> findByStockSymbolAndTimeframeAndZone(String stockSymbol, String timeframe, Zone zone);
+    Optional<Trade> findByStockSymbolAndTimeframeAndZoneAndIsActiveTrue(String stockSymbol, String timeframe, Zone zone);
 
     boolean existsByStockSymbolAndTimeframeAndIsActiveTrue(String stockSymbol, String timeframe);
+
+    // OPTIMIZATION: Batch query method to avoid N+1 query problem in fillTradeInformation
+    List<Trade> findByStockSymbolAndTimeframeAndTimestampIn(String stockSymbol, String timeframe, List<LocalDateTime> timestamps);
 }

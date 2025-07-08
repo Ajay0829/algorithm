@@ -12,8 +12,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class CandleDataAggregationService {
@@ -98,7 +100,7 @@ public class CandleDataAggregationService {
     }
 
     /**
-     * Fill trade-related information for aggregated data
+     * Fill trade-related information for aggregated data - OPTIMIZED VERSION
      */
     public List<CandleAggregatedData> fillTradeInformation(List<CandleAggregatedData> data) {
         if (data == null || data.isEmpty()) {
@@ -107,17 +109,29 @@ public class CandleDataAggregationService {
         String stockSymbol = data.get(0).getStockSymbol();
         String timeframe = data.get(0).getTimeframe();
 
-        data.forEach(singleCandle -> {
-            Optional<Trade> trade = tradeRepository.findFirstByStockSymbolAndTimeframeAndTimestamp(
-                    stockSymbol, timeframe, singleCandle.getCandleTimestamp()
-            );
+        // OPTIMIZATION: Get all timestamps at once to avoid N+1 query problem
+        List<LocalDateTime> timestamps = data.stream()
+                .map(CandleAggregatedData::getCandleTimestamp)
+                .toList();
 
-            if (trade.isPresent()) {
-                singleCandle.setTrade(trade.get().getTradeType());
-                singleCandle.setEntryPrice(trade.get().getEntryPrice());
-                singleCandle.setTradeResult(trade.get().getResult().equals("WIN") ? "WIN" : "LOSS");
+        // OPTIMIZATION: Single query to get all trades for all timestamps
+        List<Trade> allTrades = tradeRepository.findByStockSymbolAndTimeframeAndTimestampIn(
+                stockSymbol, timeframe, timestamps);
+
+        // OPTIMIZATION: Create a map for O(1) lookup instead of nested loops
+        Map<LocalDateTime, Trade> tradeMap = allTrades.stream()
+                .collect(Collectors.toMap(Trade::getTimestamp, Function.identity(), (existing, replacement) -> existing));
+
+        // OPTIMIZATION: Single pass through data to set trade information
+        data.forEach(singleCandle -> {
+            Trade trade = tradeMap.get(singleCandle.getCandleTimestamp());
+            if (trade != null) {
+                singleCandle.setTrade(trade.getTradeType());
+                singleCandle.setEntryPrice(trade.getEntryPrice());
+                singleCandle.setTradeResult(trade.getResult().equals("WIN") ? "WIN" : "LOSS");
             }
         });
+
         return data;
     }
 
@@ -137,8 +151,8 @@ public class CandleDataAggregationService {
     }
 
     private void setSupplyDemandPrices(CandleAggregatedData data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
-        Optional<Zone> demandZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "DEMAND", candleTimestamp);
-        Optional<Zone> supplyZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "SUPPLY", candleTimestamp);
+        Optional<Zone> demandZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "DEMAND", candleTimestamp);
+        Optional<Zone> supplyZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "SUPPLY", candleTimestamp);
 
         demandZone.ifPresent(zone -> {
             data.setDemandPrice(zone.getNearPoint());

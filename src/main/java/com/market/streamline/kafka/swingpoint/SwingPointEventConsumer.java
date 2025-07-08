@@ -51,7 +51,8 @@ public class SwingPointEventConsumer {
                 handleConfirmedSwingPoint(swingPoint);
             }
 
-            if (swingPoint.getIsMajor()) {
+            // Immediately after I get a first major swing point ( 5 window inflection )
+            if (swingPoint.getIsMajor() && !swingPoint.getConfirmed()) {
                 impulseZoneService.detectHTFZone(swingPoint);
             }
 

@@ -1,5 +1,3 @@
-
-
 -- Table: candles
 CREATE TABLE IF NOT EXISTS candles (
     id SERIAL PRIMARY KEY,
@@ -74,9 +72,9 @@ CREATE TABLE IF NOT EXISTS market_indicators (
     id SERIAL PRIMARY KEY,
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
-    volatility DOUBLE PRECISION NOT NULL,
+    average_volatility DOUBLE PRECISION,
     average_volume DOUBLE PRECISION NOT NULL,
-    rsi14 DOUBLE PRECISION NOT NULL,
+    rsi_14 DOUBLE PRECISION,
     UNIQUE (stock_symbol, timeframe)
 );
 
