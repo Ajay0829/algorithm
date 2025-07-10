@@ -2,7 +2,10 @@ package com.market.streamline.repository;
 
 import com.market.streamline.entity.structure.SwingPoint;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,4 +26,9 @@ public interface SwingPointRepository extends JpaRepository<SwingPoint, Long> {
     );
 
     Optional<SwingPoint> findTopByStockSymbolAndTimeframeOrderByCandleTimestampDescIdDesc(String stockSymbol, String timeframe);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM SwingPoint s WHERE s.stockSymbol = :stockSymbol")
+    void deleteByStockSymbolInBatch(String stockSymbol);
 }

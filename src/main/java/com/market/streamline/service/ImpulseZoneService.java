@@ -9,7 +9,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,12 +52,9 @@ public class ImpulseZoneService {
             return; // No volatility data available for the stock and timeframe
         }
 
-        double volatilityValue = marketIndicators.getVolatility();
-
         // Don't add overlapping zones.
         // Ideally we want to store the latest zone,
         // If an active trade exists for the old zone, then don't add the new zone.
-
         Optional<Zone> existingZoneOfSameType = zoneRepository.findLatestZoneByTypeActiveOrValid(
                 candleEntity.getStockSymbol(),
                 candleEntity.getTimeframe(),
@@ -66,29 +62,9 @@ public class ImpulseZoneService {
                 candleEntity.getCandleTimestamp()
         );
 
-        if (existingZoneOfSameType.isPresent()) {
-            Zone existingZone = existingZoneOfSameType.get();
-
-            if (isOverlappingExistingZone(existingZone, zone.getNearPoint(), zone.getFarPoint())) {
-                Optional<Trade> existingTrade = tradeRepository.findByStockSymbolAndTimeframeAndZone(
-                        existingZone.getStockSymbol(),
-                        existingZone.getTimeframe(),
-                        existingZone
-                );
-
-                if (existingTrade.isPresent() && existingTrade.get().getIsActive()) {
-                    zoneRepository.delete(zone);
-                    return;
-                } else if (existingZone.getVolume() > zone.getVolume()){
-                    zoneRepository.delete(zone);
-                    return;
-                } else {
-                    existingZone.setType("INVALID");
-                    zoneRepository.save(existingZone);
-                    chartAnnotationService.processZone(existingZone, "deleted");
-                }
-            }
-        }
+        double volatilityValue = marketIndicators.getVolatility();
+        Double total_volume = candleRepository.sumVolumesBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zone.getCandleTimestamp(), zone.getIdentifiedAt());
+        zone.setVolume(total_volume);
 
         String zoneType = zone.getZoneType();
         boolean isSave = true;
@@ -96,9 +72,6 @@ public class ImpulseZoneService {
             if (priceMovedEnough(zone.getFarPoint(), candleEntity.getClose(), volatilityValue, true)) {
                 // Zone is valid, update the zone
                 zone.setType("VALID");
-                LocalDateTime zoneStartTime = mapTimestampToHigherTimeframe(zone.getStrongSwingPoint());
-                Double total_volume = candleRepository.sumVolumesBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zoneStartTime, zone.getIdentifiedAt());
-                zone.setVolume(total_volume);
                 zoneRepository.save(zone);
             } else {
                 // Zone is invalid, remove it
@@ -109,9 +82,6 @@ public class ImpulseZoneService {
             if (priceMovedEnough(zone.getFarPoint(), candleEntity.getClose(), volatilityValue, false)) {
                 // Zone is valid, update the zone
                 zone.setType("VALID");
-                LocalDateTime zoneStartTime = mapTimestampToHigherTimeframe(zone.getStrongSwingPoint());
-                Double total_volume = candleRepository.sumVolumesBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zoneStartTime, zone.getIdentifiedAt());
-                zone.setVolume(total_volume);
                 zoneRepository.save(zone);
             } else {
                 zoneRepository.delete(zone);
@@ -120,6 +90,31 @@ public class ImpulseZoneService {
         }
 
         if (isSave) {
+
+            if (existingZoneOfSameType.isPresent()) {
+                Zone existingZone = existingZoneOfSameType.get();
+
+                if (isOverlappingExistingZone(existingZone, zone.getNearPoint(), zone.getFarPoint())) {
+                    Optional<Trade> existingTrade = tradeRepository.findByStockSymbolAndTimeframeAndZoneAndIsActiveTrue(
+                            existingZone.getStockSymbol(),
+                            existingZone.getTimeframe(),
+                            existingZone
+                    );
+
+                    if (existingTrade.isPresent() && existingTrade.get().getIsActive()) {
+                        zoneRepository.delete(zone);
+                        return;
+                    } else if (existingZone.getVolume() > zone.getVolume()){
+                        zoneRepository.delete(zone);
+                        return;
+                    } else {
+                        existingZone.setType("INVALID");
+                        zoneRepository.save(existingZone);
+                        chartAnnotationService.processZone(existingZone, "deleted");
+                    }
+                }
+            }
+
             chartAnnotationService.processZone(zone, "created");
         }
     }
@@ -147,7 +142,7 @@ public class ImpulseZoneService {
             if ("ACTIVE".equals(zone.getType())) {
 
                 // When invalidating zones, mark any active trade as loss.
-                Optional<Trade> trade = tradeRepository.findByStockSymbolAndTimeframeAndZone(
+                Optional<Trade> trade = tradeRepository.findByStockSymbolAndTimeframeAndZoneAndIsActiveTrue(
                         zone.getStockSymbol(),
                         zone.getTimeframe(),
                         zone
@@ -344,17 +339,36 @@ public class ImpulseZoneService {
         } else {
             throw new IllegalArgumentException("Unsupported timeframe: " + strongSwingPoint.getTimeframe());
         }
-        ZoneId usMarketZone = ZoneId.of("America/New_York");
+
         if (higherTimeframe.endsWith("h")) {
-            // Map to start of the hour
-            return ltfTimestamp.atZone(usMarketZone)
-                .withMinute(0).withSecond(0).withNano(0)
-                .toLocalDateTime();
+            int hour = ltfTimestamp.getHour();
+            int minute = ltfTimestamp.getMinute();
+
+            if (hour >= 9 && hour <= 15) {
+                int htfHour;
+                if (minute == 0) {
+                    htfHour = hour - 1;
+                } else {
+                    htfHour = hour;
+                }
+                return ltfTimestamp
+                    .withHour(htfHour)
+                    .withMinute(15)
+                    .withSecond(0)
+                    .withNano(0);
+            } else {
+                return ltfTimestamp
+                    .withHour(9)
+                    .withMinute(15)
+                    .withSecond(0)
+                    .withNano(0);
+            }
         } else {
-            // Map to start of the day
-            return ltfTimestamp.atZone(usMarketZone)
-                .withHour(0).withMinute(0).withSecond(0).withNano(0)
-                .toLocalDateTime();
+            return ltfTimestamp
+                .withHour(9)
+                .withMinute(15)
+                .withSecond(0)
+                .withNano(0);
         }
     }
 }

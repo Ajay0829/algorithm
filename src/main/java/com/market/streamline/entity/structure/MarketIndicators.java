@@ -15,7 +15,7 @@ public class MarketIndicators {
     @Column(name = "timeframe", nullable = false)
     private String timeframe;
 
-    @Column(name = "average_volatility", nullable = false)
+    @Column(name = "average_volatility")
     private Double averageVolatility;
 
     @Column(name = "average_volume")

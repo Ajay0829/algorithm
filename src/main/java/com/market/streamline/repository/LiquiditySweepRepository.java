@@ -2,10 +2,13 @@ package com.market.streamline.repository;
 
 import com.market.streamline.entity.liquidity.LiquiditySweep;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -20,4 +23,11 @@ public interface LiquiditySweepRepository extends JpaRepository<LiquiditySweep, 
      */
     @Query("SELECT ls FROM LiquiditySweep ls WHERE ls.stockSymbol = :stockSymbol AND ls.timeframe = :timeframe ORDER BY ls.candleTimestamp DESC LIMIT 1")
     Optional<LiquiditySweep> findLatestByStockSymbolAndTimeframe(@Param("stockSymbol") String stockSymbol, @Param("timeframe") String timeframe);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM LiquiditySweep l WHERE l.stockSymbol = :stockSymbol")
+    void deleteByStockSymbolInBatch(String stockSymbol);
+
+    boolean existsByStockSymbolAndTimeframeAndCandleTimestamp(String stockSymbol, String timeframe, LocalDateTime candleTimestamp);
 }

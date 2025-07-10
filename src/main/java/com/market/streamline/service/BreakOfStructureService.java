@@ -1,8 +1,6 @@
 package com.market.streamline.service;
 
 import com.market.streamline.entity.structure.*;
-import com.market.streamline.kafka.bos.BOSEventProducer;
-import com.market.streamline.kafka.model.BOSEvent;
 import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.MarketIndicatorsRepository;
@@ -16,15 +14,13 @@ import java.util.List;
 @Service
 public class BreakOfStructureService {
 
-    private final BOSEventProducer bosEventProducer;
     private final SwingPointRepository swingPointRepository;
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
     private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public BreakOfStructureService(BOSEventProducer bosEventProducer, SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
-        this.bosEventProducer = bosEventProducer;
+    public BreakOfStructureService(SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.swingPointRepository = swingPointRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
@@ -79,15 +75,6 @@ public class BreakOfStructureService {
             );
             breakOfStructureRepository.save(bos);
             chartAnnotationService.processBreakOfStructure(bos, "created");
-            bosEventProducer.sendBOSEvent(
-                    new BOSEvent(
-                        bos.getStockSymbol(),
-                        bos.getTimeframe(),
-                        bos.getDirection(),
-                        bos.getCandleTimestamp(),
-                        bos.getWeakSwingPoint()
-                    )
-            );
         }
     }
 

@@ -1,12 +1,13 @@
 package com.market.streamline.kafka.candle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.market.database.DatabaseContextHolder;
 import com.market.streamline.aggregation.CandleAggregatedData;
 import com.market.streamline.aggregation.CandleAggregatedDataMapper;
 import com.market.streamline.aggregation.CandleDataAggregationService;
+import com.market.streamline.data.StockState;
 import com.market.streamline.entity.structure.CandleEntity;
 import com.market.streamline.entity.aggregation.CandleAggregatedDataEntity;
-import com.market.streamline.kafka.KafkaQueueClearService;
 import com.market.streamline.kafka.model.CandleEvent;
 import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.*;
@@ -16,10 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.*;
 
 @Component
 public class CandleEventConsumer {
@@ -64,38 +67,54 @@ public class CandleEventConsumer {
     @Autowired
     private CandleAggregatedDataCsvExporter csvExporter;
     @Autowired
-    private KafkaQueueClearService kafkaQueueClearService;
-    @Autowired
     private ChartAnnotationService chartAnnotationService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private int eventCount = 0;
-    private int totalEvents = 0;
-    private String stockSymbol = null;
     @Autowired
     private MarketIndicatorsCalculationService marketIndicatorsCalculationService;
     @Autowired
     private MarketIndicatorsRepository marketIndicatorsRepository;
 
+    private final ConcurrentHashMap<String, StockState> stockStateMap = new ConcurrentHashMap<>();
 
-    public void setTotalEvents(int total, String symbol) {
-        this.totalEvents = total;
-        this.stockSymbol = symbol;
+
+    public void setTotalEvents(CountDownLatch countDownLatch, String symbol) {
+        System.out.println("setTotalEvents: total= " + countDownLatch.getCount() + ", symbol= " + symbol +  ", timestamp= " + LocalDateTime.now());
+        stockStateMap.put(symbol, new StockState(countDownLatch));
     }
 
-    @KafkaListener(topics = "candle-added", groupId = "feature-extractor-group")
-    public void listenCandleAdded(String message) {
+    @KafkaListener(topics = "candle-added", groupId = "${candle.kafka.consumer.group-id}", concurrency = "20")
+    public void listenCandleAdded(List<String> messages) {
         try {
-            CandleEvent candleEvent = objectMapper.readValue(message, CandleEvent.class);
-            CandleEntity candleEntity = getCandleEntity(candleEvent);
-            candleRepository.save(candleEntity);
-            chartAnnotationService.processCandle(candleEntity, "created");
-            processCandle(candleEntity);
-            eventCount++;
 
-            // After all events are processed, collect initial candle data
-            if (eventCount == totalEvents && stockSymbol != null) {
-                processEndOfEvents();
+            for (String message : messages) {
+                CandleEvent candleEvent = objectMapper.readValue(message, CandleEvent.class);
+                CandleEntity candleEntity = getCandleEntity(candleEvent);
+
+                String stockSymbol = candleEntity.getStockSymbol();
+                int dbIndex = Math.abs(stockSymbol.hashCode() % 20);
+                String databaseKey = "my_database_" + (dbIndex + 1);
+                DatabaseContextHolder.setCurrentDatabase(databaseKey);
+
+                try {
+                    // Perform database operations
+                    chartAnnotationService.processCandle(candleEntity, "created");
+                    processCandle(candleEntity);
+
+                    StockState stockState = stockStateMap.get(stockSymbol);
+                    if (stockState != null) {
+                        stockState.incrementCurrentEvents();
+
+                        if (stockState.getCountDownLatch().getCount() == 0) {
+                            processEndOfEvents(stockSymbol);
+                            System.out.println("Completed processing all candle events for stock: [" + stockSymbol + "], Time taken: "
+                                    + Duration.between(stockState.getTimestamp(), LocalDateTime.now()).toMinutes());
+                            stockStateMap.remove(stockSymbol);
+                        }
+                    }
+                } finally {
+                    DatabaseContextHolder.clear();
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -123,6 +142,7 @@ public class CandleEventConsumer {
     }
 
     private void processCandle(CandleEntity candleEntity) {
+        candleRepository.save(candleEntity);
         boolean redCandle = isRedCandle(candleEntity);
         processCandlePoint(candleEntity, redCandle); // If Red Candle, Process High else Process Low
         processCandlePoint(candleEntity, !redCandle); // If Red Candle, Process Low next else Process High next
@@ -130,7 +150,8 @@ public class CandleEventConsumer {
     }
 
     private static CandleEntity getCandleEntity(CandleEvent candleEvent) {
-        LocalDateTime candleTime = LocalDateTime.parse(candleEvent.getCandleTimestamp(), DateTimeFormatter.ISO_DATE_TIME);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssXXX");
+        LocalDateTime candleTime = LocalDateTime.parse(candleEvent.getCandleTimestamp(), formatter);
         return new CandleEntity(
                 candleEvent.getStockSymbol(),
                 candleEvent.getTimeframe(),
@@ -146,16 +167,16 @@ public class CandleEventConsumer {
     private void saveCandleAggregatedData(CandleEntity candleEntity) {
 
         // TODO: Configure for multiple timeframes
-        if (Objects.equals(candleEntity.getTimeframe(), "1d")) {
+        if (Objects.equals(candleEntity.getTimeframe(), "1h")) {
             CandleAggregatedData candleAggregatedData = candleDataAggregationService.generateInitialAggregatedData(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), candleEntity.getCandleTimestamp());
             CandleAggregatedDataEntity aggregatedEntity = candleAggregatedDataMapper.toEntity(candleAggregatedData);
             candleAggregatedDataRepository.save(aggregatedEntity);
         }
     }
 
-    private void processEndOfEvents() {
+    private void processEndOfEvents(String stockSymbol) {
         // TODO: Configure for multiple timeframes
-        List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1d");
+        List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1h");
         List<CandleAggregatedData> finalData = allAggregatedData.stream().map(
                 candleAggregatedDataMapper::fromEntity
         ).toList();
@@ -168,29 +189,21 @@ public class CandleEventConsumer {
         csvExporter.exportToCsv(finalProcessedData, csvFilePath);
         System.out.println("Exported aggregated data for " + stockSymbol + " to: " + csvFilePath);
 
-        cleanUpData();
-
-        eventCount = 0;
+        cleanUpData(stockSymbol);
     }
 
-    private void cleanUpData() {
+    private void cleanUpData(String stockSymbol) {
 
         // TODO: Look at how we can reuse the stored data instead of fetching from api every time
-        candleRepository.deleteAllInBatch();
-
-        // Clear repositories
-        swingPointRepository.deleteAllInBatch();
-        breakOfStructureRepository.deleteAllInBatch();
-        zoneRepository.deleteAllInBatch();
-        trendRepository.deleteAllInBatch();
-        tradeRepository.deleteAllInBatch();
-        liquidityRepository.deleteAllInBatch();
-        liquiditySweepRepository.deleteAllInBatch();
-        candleAggregatedDataRepository.deleteAllInBatch();
-        marketIndicatorsRepository.deleteAllInBatch();
-
-        // TODO: Update this logic to clear old messages from Kafka queues
-        System.out.println("Clearing Kafka queues after processing completion...");
-        kafkaQueueClearService.clearAllQueues();
+        candleRepository.deleteByStockSymbolInBatch(stockSymbol);
+        swingPointRepository.deleteByStockSymbolInBatch(stockSymbol);
+        breakOfStructureRepository.deleteByStockSymbolInBatch(stockSymbol);
+        zoneRepository.deleteByStockSymbolInBatch(stockSymbol);
+        trendRepository.deleteByStockSymbolInBatch(stockSymbol);
+        tradeRepository.deleteByStockSymbolInBatch(stockSymbol);
+        liquidityRepository.deleteByStockSymbolInBatch(stockSymbol);
+        liquiditySweepRepository.deleteByStockSymbolInBatch(stockSymbol);
+        candleAggregatedDataRepository.deleteByStockSymbolInBatch(stockSymbol);
+        marketIndicatorsRepository.deleteByStockSymbolInBatch(stockSymbol);
     }
 }

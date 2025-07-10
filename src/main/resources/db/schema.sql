@@ -1,5 +1,3 @@
-
-
 -- Table: candles
 CREATE TABLE IF NOT EXISTS candles (
     id SERIAL PRIMARY KEY,
@@ -74,9 +72,9 @@ CREATE TABLE IF NOT EXISTS market_indicators (
     id SERIAL PRIMARY KEY,
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
-    volatility DOUBLE PRECISION NOT NULL,
+    average_volatility DOUBLE PRECISION,
     average_volume DOUBLE PRECISION NOT NULL,
-    rsi14 DOUBLE PRECISION NOT NULL,
+    rsi_14 DOUBLE PRECISION,
     UNIQUE (stock_symbol, timeframe)
 );
 
@@ -111,10 +109,11 @@ CREATE TABLE IF NOT EXISTS liquidity (
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
     candle_timestamp TIMESTAMP NOT NULL,
-    type VARCHAR(16), -- BUY, SELL
+    liquidity_type VARCHAR(16), -- BUY, SELL
     price DOUBLE PRECISION,
     no_of_equals INTEGER,
-    UNIQUE (stock_symbol, timeframe, candle_timestamp, type)
+    strength INTEGER,
+    UNIQUE (stock_symbol, timeframe, candle_timestamp, liquidity_type)
 );
 CREATE INDEX IF NOT EXISTS idx_liquidity_symbol_timeframe_ts
     ON liquidity (stock_symbol, timeframe, candle_timestamp);
@@ -168,7 +167,7 @@ CREATE TABLE IF NOT EXISTS candle_aggregated_data (
     volume DOUBLE PRECISION,
     last_swing_high DOUBLE PRECISION,
     last_swing_low DOUBLE PRECISION,
-    last_liquidity_sweep_type INTEGER,
+    last_liquidity_sweep_type VARCHAR(255),
     supply_price DOUBLE PRECISION,
     supply_volume DOUBLE PRECISION,
     demand_price DOUBLE PRECISION,
@@ -181,7 +180,7 @@ CREATE TABLE IF NOT EXISTS candle_aggregated_data (
     sell_liquidity_strength INTEGER,
     volatility DOUBLE PRECISION,
     average_volume DOUBLE PRECISION,
-    rsi14 DOUBLE PRECISION,
+    rsi_14 DOUBLE PRECISION,
     trade VARCHAR(255),
     entry_price DOUBLE PRECISION,
     trade_result VARCHAR(255),
