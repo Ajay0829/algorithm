@@ -72,8 +72,11 @@ public class LiquidityService {
                     getLiquidityPrice(swingPoint, marketIndicators.getVolatility()),
                     liquidity.getStrength()
             );
-            liquiditySweepRepository.save(liquiditySweep);
-
+            if (!liquiditySweepRepository.existsByStockSymbolAndTimeframeAndCandleTimestamp(swingPoint.getStockSymbol(), swingPoint.getTimeframe(), swingPoint.getCandleTimestamp())) {
+                liquiditySweepRepository.save(liquiditySweep);
+            } else {
+                return;
+            }
             // TODO: Update losing trades associated with this liquidity to be liquidity_sweep.
 
             // Send chart annotation for liquidity deletion (swept)

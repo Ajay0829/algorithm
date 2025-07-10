@@ -15,7 +15,7 @@ public class CandleEventProducer {
     public void sendCandleEvent(CandleEvent event) {
         try {
             String json = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send("candle-added", json);
+            kafkaTemplate.send("candle-added", event.getStockSymbol(), json);
         } catch (Exception e) {
             e.printStackTrace();
         }

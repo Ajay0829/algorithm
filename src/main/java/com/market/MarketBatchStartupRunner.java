@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 @Component
 public class MarketBatchStartupRunner {
@@ -51,7 +52,9 @@ public class MarketBatchStartupRunner {
             return Integer.compare(timeframeToMinutes(a.getTimeframe()), timeframeToMinutes(b.getTimeframe()));
         });
 
-        candleEventConsumer.setTotalEvents(allEvents.size(), stockSymbol);
+        CountDownLatch countDownLatch = new CountDownLatch(allEvents.size());
+
+        candleEventConsumer.setTotalEvents(countDownLatch, stockSymbol);
         allEvents.forEach(candleEvent -> candleEventProducer.sendCandleEvent(candleEvent));
         System.out.println(allEvents.size() + " events published to Kafka topic 'candle-added' for " + stockSymbol);
     }

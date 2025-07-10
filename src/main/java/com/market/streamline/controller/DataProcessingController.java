@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.logging.Logger;
 
 @RestController
@@ -33,53 +34,55 @@ public class DataProcessingController {
 
     @PostMapping("/process-all-stocks")
     public String processAllStocks() {
+        ExecutorService executorService = Executors.newFixedThreadPool(20); // Limit to 20 concurrent tasks
+
         try {
             File originalDir = new File(DEFAULT_DATA_DIRECTORY + "/original");
             if (!originalDir.exists() || !originalDir.isDirectory()) {
                 return "Original data directory not found: " + originalDir.getAbsolutePath();
             }
 
-            // Get all unique stock symbols from CSV files
             Set<String> stockSymbols = getStockSymbols(originalDir);
 
-            // Filter out already processed stocks
-            Set<String> remainingStocks = filterUnprocessedStocks(stockSymbols);
+            List<Future<?>> futures = new ArrayList<>();
 
-            System.out.println("Found " + stockSymbols.size() + " total stocks");
-            System.out.println("Already processed: " + (stockSymbols.size() - remainingStocks.size()) + " stocks");
-            System.out.println("Remaining to process: " + remainingStocks.size() + " stocks");
-
-            // Process each remaining stock sequentially
-            for (String symbol : remainingStocks) {
-                processStock(symbol, originalDir);
-
-                // Add a small delay between stocks to ensure proper processing
-                Thread.sleep(1000);
+            for (String symbol : stockSymbols) {
+                futures.add(executorService.submit(() -> {
+                    try {
+                        processStock(symbol, originalDir); // Process events for this stock
+                    } catch (Exception e) {
+                        LOGGER.severe("Error processing stock " + symbol + ": " + e.getMessage());
+                    }
+                }));
             }
 
-            return "Successfully processed " + remainingStocks.size() + " stocks (skipped " +
-                   (stockSymbols.size() - remainingStocks.size()) + " already processed)";
+            // Wait for all tasks to complete
+            for (Future<?> future : futures) {
+                try {
+                    future.get(); // Wait for task completion
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOGGER.severe("Thread interrupted while processing stocks");
+                } catch (ExecutionException e) {
+                    LOGGER.severe("Error during stock processing: " + e.getCause().getMessage());
+                }
+            }
+
+            return "Successfully processed all stocks in directory: " + originalDir.getAbsolutePath();
 
         } catch (Exception e) {
             LOGGER.severe("Error processing stocks: " + e.getMessage());
             return "Error processing stocks: " + e.getMessage();
-        }
-    }
-
-    private Set<String> filterUnprocessedStocks(Set<String> allStocks) {
-        Set<String> unprocessed = new HashSet<>();
-        File processedDir = new File("data/processed");
-
-        for (String symbol : allStocks) {
-            File csvFile = new File(processedDir, symbol + "_aggregated_data.csv");
-            if (!csvFile.exists()) {
-                unprocessed.add(symbol);
-            } else {
-                System.out.println("Skipping already processed stock: " + symbol);
+        } finally {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(1, TimeUnit.HOURS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
             }
         }
-
-        return unprocessed;
     }
 
     private Set<String> getStockSymbols(File originalDir) {
@@ -98,7 +101,7 @@ public class DataProcessingController {
         return symbols;
     }
 
-    private void processStock(String symbol, File originalDir) throws IOException, InterruptedException {
+    protected void processStock(String symbol, File originalDir) throws IOException {
         System.out.println("Processing stock: " + symbol);
 
         List<CandleEvent> allCandles = new ArrayList<>();
@@ -134,47 +137,25 @@ public class DataProcessingController {
             return Integer.compare(getTimeframeToMinutes(c1.getTimeframe()), getTimeframeToMinutes(c2.getTimeframe()));
         });
 
-        System.out.println("Total candles for " + symbol + ": " + allCandles.size());
+        CountDownLatch countDownLatch = new CountDownLatch(allCandles.size());
 
         // Set total events in consumer
-        candleEventConsumer.setTotalEvents(allCandles.size(), symbol);
+        candleEventConsumer.setTotalEvents(countDownLatch, symbol);
 
         // Send all candles to Kafka producer
         for (CandleEvent candle : allCandles) {
             candleEventProducer.sendCandleEvent(candle);
-            // Small delay to prevent overwhelming the system
-            Thread.sleep(10);
         }
 
-        // Wait for processing to complete with timeout
-        int maxWaitTime = 600000; // 10 minutes max (600 seconds)
-        int waitInterval = 5000; // Check every 5 seconds
-        int totalWaitTime = 0;
+        System.out.println("Total candles for " + symbol + ": " + allCandles.size());
 
-        while (totalWaitTime < maxWaitTime) {
-            // Check if CSV file exists (indicates processing is complete)
-            File processedDir = new File("data/processed");
-            File csvFile = new File(processedDir, symbol + "_aggregated_data.csv");
-
-            if (csvFile.exists()) {
-                System.out.println("CSV file found for " + symbol + ", processing complete");
-                break;
-            }
-
-            Thread.sleep(waitInterval);
-            totalWaitTime += waitInterval;
-
-            // Log progress every minute
-            if (totalWaitTime % 60000 == 0) {
-                System.out.println("Still waiting for " + symbol + " processing... (" + (totalWaitTime / 60000) + " minutes elapsed)");
-            }
+        try {
+            countDownLatch.await();
+            System.out.println("========================= All candle events processed for stock: " + symbol);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOGGER.severe("Interrupted while waiting for events to complete for stock: " + symbol);
         }
-
-        if (totalWaitTime >= maxWaitTime) {
-            System.err.println("Warning: Timeout waiting for " + symbol + " processing to complete");
-        }
-
-        System.out.println("Completed processing for stock: " + symbol);
     }
 
     private List<CandleEvent> readCandlesFromFile(File file, String symbol, String timeframe) throws IOException {
@@ -206,28 +187,6 @@ public class DataProcessingController {
         }
 
         return candles;
-    }
-
-    private LocalDateTime getEndTime(LocalDateTime startTime, String timeframe) {
-        switch (timeframe) {
-            case "15m":
-                return startTime.plusMinutes(15);
-            case "1h":
-                return startTime.plusHours(1);
-            default:
-                return startTime;
-        }
-    }
-
-    private int getTimeframePriority(String timeframe) {
-        switch (timeframe) {
-            case "15m":
-                return 1;
-            case "1h":
-                return 2;
-            default:
-                return Integer.MAX_VALUE;
-        }
     }
 
     private long getTimeframeToMillis(String timeframe) {

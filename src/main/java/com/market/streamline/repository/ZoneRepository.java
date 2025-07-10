@@ -3,9 +3,11 @@ package com.market.streamline.repository;
 import com.market.streamline.entity.structure.SwingPoint;
 import com.market.streamline.entity.zone.Zone;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,5 +59,11 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
                                                          @Param("zoneType") String zoneType,
                                                          @Param("currentPrice") Double currentPrice,
                                                          @Param("currentTimestamp") LocalDateTime currentTimestamp);
+
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Zone z WHERE z.stockSymbol = :stockSymbol")
+    void deleteByStockSymbolInBatch(String stockSymbol);
 
 }

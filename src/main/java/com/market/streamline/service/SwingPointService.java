@@ -1,9 +1,6 @@
 package com.market.streamline.service;
 
 import com.market.streamline.entity.structure.*;
-import com.market.streamline.plot.kafka.ChartAnnotationProducer;
-import com.market.streamline.kafka.swingpoint.SwingPointEventProducer;
-import com.market.streamline.kafka.model.SwingPointEvent;
 import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.*;
 import org.springframework.data.domain.PageRequest;
@@ -22,18 +19,20 @@ public class SwingPointService {
     private final CandleRepository candleRepository;
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
-    private final SwingPointEventProducer swingPointEventProducer;
     private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
+    private final LiquidityService liquidityService;
+    private final ImpulseZoneService impulseZoneService;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, SwingPointEventProducer swingPointEventProducer, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, LiquidityService liquidityService, ImpulseZoneService impulseZoneService) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
-        this.swingPointEventProducer = swingPointEventProducer;
         this.chartAnnotationService = chartAnnotationService;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
+        this.liquidityService = liquidityService;
+        this.impulseZoneService = impulseZoneService;
     }
 
     public void confirmSwingPointIfAny(CandleEntity candleEntity, boolean isHighCheck) {
@@ -59,7 +58,7 @@ public class SwingPointService {
                             recent.setConfirmed(true);
                             swingPointRepository.save(recent);
                             // Publish confirmed swing point event to existing Kafka topic
-                            swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(recent));
+                            handleSwingPointEvent(recent);
                         }
                     }
                 } else {
@@ -68,7 +67,7 @@ public class SwingPointService {
                             recent.setConfirmed(true);
                             swingPointRepository.save(recent);
                             // Publish confirmed swing point event to existing Kafka topic
-                            swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(recent));
+                            handleSwingPointEvent(recent);
                         }
                     }
                 }
@@ -137,7 +136,7 @@ public class SwingPointService {
             return handleRecentSwingPoint(sp, recent, isHighCheck, volatilityValue);
         } else {
             swingPointRepository.save(sp);
-            swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
+            handleSwingPointEvent(sp);
             return Optional.of(sp);
         }
     }
@@ -153,14 +152,14 @@ public class SwingPointService {
                     swingPointRepository.delete(recent);
                     chartAnnotationService.processSwingPoint(recent, "deleted");
                     swingPointRepository.save(sp);
-                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
+                    handleSwingPointEvent(sp);
                     return Optional.of(sp);
                 }
             } else {
                 // recent is swing low
                 if (priceMovedEnough(recent.getPrice(), sp.getPrice(), volatilityValue, true)) {
                     swingPointRepository.save(sp);
-                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
+                    handleSwingPointEvent(sp);
                     return Optional.of(sp);
                 }
             }
@@ -173,14 +172,14 @@ public class SwingPointService {
                     swingPointRepository.delete(recent);
                     chartAnnotationService.processSwingPoint(recent, "deleted");
                     swingPointRepository.save(sp);
-                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
+                    handleSwingPointEvent(sp);
                     return Optional.of(sp);
                 }
             } else {
                 // recent is swing high
                 if (priceMovedEnough(recent.getPrice(), sp.getPrice(), volatilityValue, false)) {
                     swingPointRepository.save(sp);
-                    swingPointEventProducer.sendSwingPointEvent(SwingPointEvent.fromSwingPoint(sp));
+                    handleSwingPointEvent(sp);
                     return Optional.of(sp);
                 }
             }
@@ -252,6 +251,20 @@ public class SwingPointService {
             );
         }
         return Optional.empty();
+    }
+
+
+    public void handleSwingPointEvent(SwingPoint swingPoint) {
+        if (swingPoint.getConfirmed()) {
+            liquidityService.checkLiquiditySweep(swingPoint);
+        }
+
+        // Immediately after I get a first major swing point ( 5 window inflection )
+        if (swingPoint.getIsMajor() && !swingPoint.getConfirmed()) {
+            impulseZoneService.detectHTFZone(swingPoint);
+        }
+
+        chartAnnotationService.processSwingPoint(swingPoint, "created");
     }
 
     private boolean isInflectionPoint(CandleEntity current, CandleEntity reference, boolean direction) {
