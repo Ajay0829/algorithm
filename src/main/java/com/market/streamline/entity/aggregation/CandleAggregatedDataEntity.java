@@ -92,6 +92,9 @@ public class CandleAggregatedDataEntity {
     @Column(name = "trade_result")
     private String tradeResult;
 
+    @Column(name = "time_to_return")
+    private Long timeToReturn;
+
     public CandleAggregatedDataEntity() {}
 
     public Long getId() {
@@ -316,5 +319,13 @@ public class CandleAggregatedDataEntity {
 
     public void setTradeResult(String tradeResult) {
         this.tradeResult = tradeResult;
+    }
+
+    public Long getTimeToReturn() {
+        return timeToReturn;
+    }
+
+    public void setTimeToReturn(Long timeToReturn) {
+        this.timeToReturn = timeToReturn;
     }
 }

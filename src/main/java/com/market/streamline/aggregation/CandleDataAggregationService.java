@@ -1,5 +1,6 @@
 package com.market.streamline.aggregation;
 
+import com.market.streamline.entity.aggregation.CandleAggregatedDataEntity;
 import com.market.streamline.entity.liquidity.Liquidity;
 import com.market.streamline.entity.liquidity.LiquiditySweep;
 import com.market.streamline.entity.structure.*;
@@ -12,16 +13,10 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 public class CandleDataAggregationService {
-
-    @Autowired
-    private CandleRepository candleRepository;
 
     @Autowired
     private SwingPointRepository swingPointRepository;
@@ -39,29 +34,17 @@ public class CandleDataAggregationService {
     private ZoneRepository zoneRepository;
 
     @Autowired
-    private TrendRepository trendRepository;
-
-    @Autowired
-    private TradeRepository tradeRepository;
-
-    @Autowired
     private MarketIndicatorsRepository marketIndicatorsRepository;
+    @Autowired
+    private CandleAggregatedDataRepository candleAggregatedDataRepository;
 
-    /**
-     * Generate initial aggregated data for a candle (excluding trade information)
-     */
-    public CandleAggregatedData generateInitialAggregatedData(String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
-        CandleAggregatedData data = new CandleAggregatedData();
 
-        // Get the candle data
-        Optional<CandleEntity> candleOpt = candleRepository.findByStockSymbolAndTimeframeAndCandleTimestamp(
-            stockSymbol, timeframe, candleTimestamp);
+    public void saveAggregatedData(CandleEntity candle, Trade trade) {
+        LocalDateTime candleTimestamp = candle.getCandleTimestamp();
+        String stockSymbol = candle.getStockSymbol();
+        String timeframe = candle.getTimeframe();
 
-        if (candleOpt.isEmpty()) {
-            return null;
-        }
-
-        CandleEntity candle = candleOpt.get();
+        CandleAggregatedDataEntity data = new CandleAggregatedDataEntity();
 
         // Set basic candle data
         data.setStockSymbol(stockSymbol);
@@ -92,50 +75,15 @@ public class CandleDataAggregationService {
         setIndicators(data, stockSymbol, timeframe, candleTimestamp);
 
         // Trade-related fields will be filled later
-        data.setTrade("HOLD"); // Will be set during trade processing
-        data.setEntryPrice(0.0);
+        data.setTrade(trade.getTradeType()); // Will be set during trade processing
+        data.setEntryPrice(trade.getEntryPrice());
+        data.setTimeToReturn(trade.getTimeToReturn());
         data.setTradeResult("NA");
 
-        return data;
+        candleAggregatedDataRepository.save(data);
     }
 
-    /**
-     * Fill trade-related information for aggregated data - OPTIMIZED VERSION
-     */
-    public List<CandleAggregatedData> fillTradeInformation(List<CandleAggregatedData> data) {
-        if (data == null || data.isEmpty()) {
-            return data;
-        }
-        String stockSymbol = data.get(0).getStockSymbol();
-        String timeframe = data.get(0).getTimeframe();
-
-        // OPTIMIZATION: Get all timestamps at once to avoid N+1 query problem
-        List<LocalDateTime> timestamps = data.stream()
-                .map(CandleAggregatedData::getCandleTimestamp)
-                .toList();
-
-        // OPTIMIZATION: Single query to get all trades for all timestamps
-        List<Trade> allTrades = tradeRepository.findByStockSymbolAndTimeframeAndTimestampIn(
-                stockSymbol, timeframe, timestamps);
-
-        // OPTIMIZATION: Create a map for O(1) lookup instead of nested loops
-        Map<LocalDateTime, Trade> tradeMap = allTrades.stream()
-                .collect(Collectors.toMap(Trade::getTimestamp, Function.identity(), (existing, replacement) -> existing));
-
-        // OPTIMIZATION: Single pass through data to set trade information
-        data.forEach(singleCandle -> {
-            Trade trade = tradeMap.get(singleCandle.getCandleTimestamp());
-            if (trade != null) {
-                singleCandle.setTrade(trade.getTradeType());
-                singleCandle.setEntryPrice(trade.getEntryPrice());
-                singleCandle.setTradeResult(trade.getResult().equals("WIN") ? "WIN" : "LOSS");
-            }
-        });
-
-        return data;
-    }
-
-    private void setLastSwingPoints(CandleAggregatedData data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setLastSwingPoints(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
         List<SwingPoint> swingPoints = swingPointRepository.findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDescIdDesc(stockSymbol, timeframe)
                 .stream().sorted(Comparator.comparing(SwingPoint::getCandleTimestamp)
                         .thenComparing(SwingPoint::getId)).toList();
@@ -150,7 +98,7 @@ public class CandleDataAggregationService {
 
     }
 
-    private void setSupplyDemandPrices(CandleAggregatedData data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setSupplyDemandPrices(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
         Optional<Zone> demandZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "DEMAND", candleTimestamp);
         Optional<Zone> supplyZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "SUPPLY", candleTimestamp);
 
@@ -164,7 +112,7 @@ public class CandleDataAggregationService {
         });
     }
 
-    private void setLastLiquiditySweepType(CandleAggregatedData data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setLastLiquiditySweepType(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
         Optional<LiquiditySweep> lastLiquiditySweep = liquiditySweepRepository.findLatestByStockSymbolAndTimeframe(stockSymbol, timeframe);
         if (lastLiquiditySweep.isPresent()) {
             data.setLastLiquiditySweepType(lastLiquiditySweep.get().getSweepType());
@@ -173,7 +121,7 @@ public class CandleDataAggregationService {
         }
     }
 
-    private void setBosDirection(CandleAggregatedData data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setBosDirection(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
         Optional<BreakOfStructure> bos = breakOfStructureRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(stockSymbol, timeframe);
         if (bos.isPresent()) {
             data.setBosDirection(bos.get().getDirection());
@@ -184,7 +132,7 @@ public class CandleDataAggregationService {
         }
     }
 
-    private void setLiquidityLevels(CandleAggregatedData data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setLiquidityLevels(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
         Optional<Liquidity> buyLiquidity = liquidityRepository.findFirstByStockSymbolAndTimeframeAndLiquidityTypeOrderByCandleTimestampDesc(
             stockSymbol, timeframe, "BUY_SWEEP");
         Optional<Liquidity> sellLiquidity = liquidityRepository.findFirstByStockSymbolAndTimeframeAndLiquidityTypeOrderByCandleTimestampDesc(
@@ -200,7 +148,7 @@ public class CandleDataAggregationService {
         });
     }
 
-    private void setIndicators(CandleAggregatedData data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setIndicators(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
         MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
         if (marketIndicators == null) {
             data.setVolatility(0);

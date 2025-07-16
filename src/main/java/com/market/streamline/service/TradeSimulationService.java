@@ -1,13 +1,13 @@
 package com.market.streamline.service;
 
+import com.market.streamline.aggregation.CandleDataAggregationService;
+import com.market.streamline.entity.aggregation.CandleAggregatedDataEntity;
 import com.market.streamline.entity.structure.CandleEntity;
 import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.trade.Trade;
 import com.market.streamline.entity.zone.Zone;
 import com.market.streamline.plot.ChartAnnotationService;
-import com.market.streamline.repository.MarketIndicatorsRepository;
-import com.market.streamline.repository.TradeRepository;
-import com.market.streamline.repository.ZoneRepository;
+import com.market.streamline.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -19,12 +19,18 @@ public class TradeSimulationService {
     private final ZoneRepository zoneRepository;
     private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
+    private final CandleRepository candleRepository;
+    private final CandleDataAggregationService candleDataAggregationService;
+    private final CandleAggregatedDataRepository candleAggregatedDataRepository;
 
-    public TradeSimulationService(TradeRepository tradeRepository, ZoneRepository zoneRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
+    public TradeSimulationService(TradeRepository tradeRepository, ZoneRepository zoneRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, CandleRepository candleRepository, CandleDataAggregationService candleDataAggregationService, CandleAggregatedDataRepository candleAggregatedDataRepository) {
         this.tradeRepository = tradeRepository;
         this.zoneRepository = zoneRepository;
         this.chartAnnotationService = chartAnnotationService;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
+        this.candleRepository = candleRepository;
+        this.candleDataAggregationService = candleDataAggregationService;
+        this.candleAggregatedDataRepository = candleAggregatedDataRepository;
     }
 
     public void processActiveTrade(CandleEntity candleEntity, boolean isHighCheck) {
@@ -55,6 +61,7 @@ public class TradeSimulationService {
 
     public void evaluateTrade(Trade trade, Zone zone, CandleEntity candleEntity, String result) {
         trade.setResult(result);
+        saveResultToCandleAggregatedData(trade, result);
         trade.setIsActive(false);
         zone.setType(result.equals("WIN") ? "VALID" : "INVALID");
         zoneRepository.save(zone);
@@ -63,6 +70,18 @@ public class TradeSimulationService {
             chartAnnotationService.processZone(zone, "deleted");
         }
         chartAnnotationService.processTrade(trade, candleEntity, "updated");
+    }
+
+    public void saveResultToCandleAggregatedData(Trade trade, String result) {
+        CandleAggregatedDataEntity candleAggregatedDataEntity = candleAggregatedDataRepository.findByStockSymbolAndTimeframeAndCandleTimestampAndTradeAndEntryPrice(
+                trade.getStockSymbol(),
+                trade.getTimeframe(),
+                trade.getTimestamp(),
+                trade.getTradeType(),
+                trade.getEntryPrice()
+        );
+        candleAggregatedDataEntity.setTradeResult(result);
+        candleAggregatedDataRepository.save(candleAggregatedDataEntity);
     }
 
     public void addTrade(CandleEntity candleEntity, Zone zone, double entryPrice) {
@@ -83,6 +102,13 @@ public class TradeSimulationService {
             targetPrice = entryPrice - entryPrice * 5*volatilityValue/100;
         }
 
+        long tradingHours = candleRepository.countByStockSymbolAndTimeframeAndCandleTimestampBetween(
+                candleEntity.getStockSymbol(),
+                candleEntity.getTimeframe(),
+                zone.getCandleTimestamp(),
+                candleEntity.getCandleTimestamp()
+        );
+
         Trade trade = new Trade(
                 candleEntity.getStockSymbol(),
                 candleEntity.getTimeframe(),
@@ -91,7 +117,8 @@ public class TradeSimulationService {
                 stopLossPrice,
                 targetPrice,
                 zone.getZoneType().equals("DEMAND") ? "BUY" : "SELL",
-                true
+                true,
+                tradingHours
         );
 
         zone.setType("ACTIVE");
@@ -100,6 +127,7 @@ public class TradeSimulationService {
         trade.setZone(zone);
         tradeRepository.save(trade);
 
+        candleDataAggregationService.saveAggregatedData(candleEntity, trade);
         chartAnnotationService.processTrade(trade, candleEntity, "executed");
     }
 }
