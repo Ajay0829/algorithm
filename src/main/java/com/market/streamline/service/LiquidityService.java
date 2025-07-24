@@ -127,19 +127,6 @@ public class LiquidityService {
         }
     }
 
-    private double getBestLiquidityPrice(SwingPoint swingPoint, Liquidity liquidity, double volatility) {
-        // Logic to determine the best liquidity price based on the swing point and existing liquidity
-        double existingLiquidityPrice = liquidity.getPrice();
-
-        double newLiquidityPrice = getLiquidityPrice(swingPoint, volatility);
-
-        if (swingPoint.getSwingType().equals("HIGH")) {
-            return Math.max(existingLiquidityPrice, newLiquidityPrice);
-        } else {
-            return Math.min(existingLiquidityPrice, newLiquidityPrice);
-        }
-    }
-
     private boolean priceTappedLastLiquidity(SwingPoint swingPoint, Liquidity liquidity) {
         if (swingPoint.getSwingType().equals("HIGH")) {
             return swingPoint.getPrice() >= liquidity.getPrice();

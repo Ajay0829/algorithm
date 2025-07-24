@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS market_indicators (
     average_volatility DOUBLE PRECISION,
     average_volume DOUBLE PRECISION NOT NULL,
     rsi_14 DOUBLE PRECISION,
+    no_of_samples INTEGER,
     UNIQUE (stock_symbol, timeframe)
 );
 

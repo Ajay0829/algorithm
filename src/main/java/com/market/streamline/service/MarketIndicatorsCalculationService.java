@@ -9,8 +9,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
-import static java.lang.Math.abs;
+import static java.lang.Math.*;
 
 @Service
 public class MarketIndicatorsCalculationService {
@@ -18,6 +19,7 @@ public class MarketIndicatorsCalculationService {
     private final MarketIndicatorsRepository marketIndicatorsRepository;
     private final CandleRepository candleRepository;
     private static final int RSI_PERIOD = 14;
+    private static final int MOVING_AVERAGE_WINDOW = 200;
 
     public MarketIndicatorsCalculationService(MarketIndicatorsRepository marketIndicatorsRepository, CandleRepository candleRepository) {
         this.marketIndicatorsRepository = marketIndicatorsRepository;
@@ -34,30 +36,38 @@ public class MarketIndicatorsCalculationService {
         );
 
         if (marketIndicators == null) {
-            double initialVolatility = abs(candleEntity.getOpen() - candleEntity.getClose()) * 100 / candleEntity.getOpen();
+            double initialVolatility = abs(candleEntity.getHigh() - candleEntity.getLow()) * 100 / candleEntity.getClose();
             marketIndicators = new MarketIndicators(
                     stockSymbol,
                     timeframe,
                     initialVolatility,
                     candleEntity.getVolume(),
-                    null // RSI will be calculated below
+                    null, // RSI will be calculated below
+                    1
             );
         } else {
             // Update average volatility
             double currentVolatility = marketIndicators.getAverageVolatility();
-            double currentMove = abs(candleEntity.getOpen() - candleEntity.getClose()) * 100 / candleEntity.getOpen();
-            long totalCandles = candleRepository.countByStockSymbolAndTimeframe(stockSymbol, timeframe);
-            double finalVolatility = (currentVolatility * (totalCandles - 1) + currentMove) / totalCandles;
+            CandleEntity previousCandle = candleRepository.findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanOrderByCandleTimestampDesc(
+                    candleEntity.getStockSymbol(), candleEntity.getTimeframe(), candleEntity.getCandleTimestamp()
+            );
+            double previousClose = previousCandle.getClose();
+            double atr = getATR(previousClose, candleEntity) * 100;
+
+            int totalSamples = marketIndicators.getNoOfSamples();
+            double finalVolatility = (currentVolatility * totalSamples + atr) / (totalSamples + 1);
             marketIndicators.setAverageVolatility(finalVolatility);
 
             // Update average volume
             if (marketIndicators.getAverageVolume() != null) {
                 double currentAvgVolume = marketIndicators.getAverageVolume();
-                double finalAvgVolume = (currentAvgVolume * (totalCandles - 1) + candleEntity.getVolume()) / totalCandles;
+                double finalAvgVolume = (currentAvgVolume * totalSamples + candleEntity.getVolume()) / (totalSamples + 1);
                 marketIndicators.setAverageVolume(finalAvgVolume);
             } else {
                 marketIndicators.setAverageVolume(candleEntity.getVolume());
             }
+
+            marketIndicators.setNoOfSamples(min(totalSamples + 1, MOVING_AVERAGE_WINDOW - 1));
         }
 
         // Calculate and update RSI
@@ -67,6 +77,14 @@ public class MarketIndicatorsCalculationService {
         }
 
         marketIndicatorsRepository.save(marketIndicators);
+    }
+
+    double getATR(double previousClose, CandleEntity candleEntity) {
+        double volatility = max(abs(candleEntity.getHigh() - candleEntity.getLow()), abs(candleEntity.getHigh() - previousClose));
+        volatility = max(volatility, abs(candleEntity.getLow() - previousClose));
+        volatility /= candleEntity.getClose();
+
+        return volatility;
     }
 
     /**
@@ -137,11 +155,5 @@ public class MarketIndicatorsCalculationService {
 
         // Ensure RSI stays within valid bounds (0-100)
         return Math.max(0.0, Math.min(100.0, rsi));
-    }
-
-    // Backward compatibility method for existing volatility usage
-    public Double getVolatility(String stockSymbol, String timeframe) {
-        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
-        return marketIndicators != null ? marketIndicators.getAverageVolatility() : null;
     }
 }

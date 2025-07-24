@@ -47,15 +47,15 @@ public class BreakOfStructureService {
         SwingType lastSwingType = SwingType.valueOf(swingPoints.get(1).getSwingType());
         SwingPoint weakSwingPoint = swingPoints.get(0);
 
+        boolean bosExists = breakOfStructureRepository.existsByWeakSwingPointAndStrongSwingPoint(weakSwingPoint, swingPoints.get(1));
+        if (bosExists) {
+            return;
+        }
+
         if (lastSwingType == SwingType.HIGH && !isHighCheck) {
             breakOfStructure = priceMovedEnough(candleEntity, weakSwingPoint, volatilityValue, false);
         } else if (lastSwingType == SwingType.LOW && isHighCheck) {
             breakOfStructure = priceMovedEnough(candleEntity, weakSwingPoint, volatilityValue, true);
-        }
-
-        boolean bosExists = breakOfStructureRepository.existsByWeakSwingPointAndStrongSwingPoint(weakSwingPoint, swingPoints.get(1));
-        if (bosExists) {
-            return;
         }
 
         if (breakOfStructure) {
@@ -88,9 +88,9 @@ public class BreakOfStructureService {
     boolean priceMovedEnough(CandleEntity candleEntity, SwingPoint swingPoint, double volatilityValue, boolean direction) {
         double priceChange;
         if (direction) {
-            priceChange = (candleEntity.getHigh() - swingPoint.getPrice()) * 100 / swingPoint.getPrice();
+            priceChange = (candleEntity.getClose() - swingPoint.getPrice()) * 100 / swingPoint.getPrice();
         } else {
-            priceChange = (swingPoint.getPrice() - candleEntity.getLow()) * 100 / swingPoint.getPrice();
+            priceChange = (swingPoint.getPrice() - candleEntity.getClose()) * 100 / swingPoint.getPrice();
         }
         return priceChange >= getMultiplier() * volatilityValue;
     }
