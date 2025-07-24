@@ -23,4 +23,13 @@ public interface CandleAggregatedDataRepository extends JpaRepository<CandleAggr
     @Transactional
     @Query("DELETE FROM CandleAggregatedDataEntity c WHERE c.stockSymbol = :stockSymbol")
     void deleteByStockSymbolInBatch(String stockSymbol);
+
+    @Query("SELECT c FROM CandleAggregatedDataEntity c WHERE c.stockSymbol = :stockSymbol AND c.timeframe = :timeframe AND c.candleTimestamp = :candleTimestamp AND c.trade = :trade AND c.entryPrice = :entryPrice")
+    CandleAggregatedDataEntity findByStockSymbolAndTimeframeAndCandleTimestampAndTradeAndEntryPrice(
+            @Param("stockSymbol") String stockSymbol,
+            @Param("timeframe") String timeframe,
+            @Param("candleTimestamp") java.time.LocalDateTime candleTimestamp,
+            @Param("trade") String trade,
+            @Param("entryPrice") double entryPrice
+    );
 }

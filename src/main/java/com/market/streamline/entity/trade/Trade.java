@@ -42,9 +42,12 @@ public class Trade {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    @Column(name = "time_to_return")
+    private long timeToReturn = 0;
+
     public Trade() {}
 
-    public Trade(String stockSymbol, String timeframe, LocalDateTime timestamp, Double entryPrice, Double stopLoss, Double takeProfit, String tradeType, Boolean isActive) {
+    public Trade(String stockSymbol, String timeframe, LocalDateTime timestamp, Double entryPrice, Double stopLoss, Double takeProfit, String tradeType, Boolean isActive, long timeToReturn) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.timestamp = timestamp;
@@ -54,6 +57,7 @@ public class Trade {
         this.tradeType = tradeType;
         this.isActive = isActive;
         this.result = "PENDING"; // Default to pending when trade is created
+        this.timeToReturn = timeToReturn;
     }
 
     public Long getId() { return id; }
@@ -91,5 +95,13 @@ public class Trade {
     }
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public long getTimeToReturn() {
+        return timeToReturn;
+    }
+
+    public void setTimeToReturn(long timeToReturn) {
+        this.timeToReturn = timeToReturn;
     }
 }

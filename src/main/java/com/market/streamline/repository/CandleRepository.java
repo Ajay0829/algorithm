@@ -60,4 +60,7 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
     @Query("DELETE FROM CandleEntity c WHERE c.stockSymbol = :stockSymbol")
     void deleteByStockSymbolInBatch(String stockSymbol);
 
+    long countByStockSymbolAndTimeframeAndCandleTimestampBetween(
+        String stockSymbol, String timeframe, LocalDateTime start, LocalDateTime end
+    );
 }

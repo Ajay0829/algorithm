@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS market_indicators (
     average_volatility DOUBLE PRECISION,
     average_volume DOUBLE PRECISION NOT NULL,
     rsi_14 DOUBLE PRECISION,
+    no_of_samples INTEGER,
     UNIQUE (stock_symbol, timeframe)
 );
 
@@ -146,7 +147,8 @@ CREATE TABLE IF NOT EXISTS trades (
     trade_type VARCHAR(255) NOT NULL,
     result VARCHAR(255),
     zone_id INTEGER REFERENCES zones(id) ON DELETE CASCADE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    time_to_return INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_trades_symbol_timeframe_ts
     ON trades (stock_symbol, timeframe, timestamp);
@@ -184,6 +186,7 @@ CREATE TABLE IF NOT EXISTS candle_aggregated_data (
     trade VARCHAR(255),
     entry_price DOUBLE PRECISION,
     trade_result VARCHAR(255),
+    time_to_return INTEGER,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
     );

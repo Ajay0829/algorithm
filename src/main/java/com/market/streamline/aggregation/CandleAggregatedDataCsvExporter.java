@@ -1,5 +1,6 @@
 package com.market.streamline.aggregation;
 
+import com.market.streamline.entity.aggregation.CandleAggregatedDataEntity;
 import com.opencsv.CSVWriter;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +15,7 @@ public class CandleAggregatedDataCsvExporter {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    public void exportToCsv(List<CandleAggregatedData> aggregatedDataList, String filePath) {
+    public void exportToCsv(List<CandleAggregatedDataEntity> aggregatedDataList, String filePath) {
         try {
             // Create directories if they don't exist
             File file = new File(filePath);
@@ -54,12 +55,13 @@ public class CandleAggregatedDataCsvExporter {
                     "rsi14",
                     "trade",
                     "entry_price",
-                    "trade_result"
+                    "trade_result",
+                    "time_to_return"
                 };
                 writer.writeNext(header);
 
                 // Write data rows
-                for (CandleAggregatedData data : aggregatedDataList) {
+                for (CandleAggregatedDataEntity data : aggregatedDataList) {
                     String[] row = {
                         data.getStockSymbol(),
                         data.getTimeframe(),
@@ -87,7 +89,8 @@ public class CandleAggregatedDataCsvExporter {
                         String.valueOf(data.getRsi14()),
                         data.getTrade(),
                         String.valueOf(data.getEntryPrice()),
-                        data.getTradeResult()
+                        data.getTradeResult(),
+                        String.valueOf(data.getTimeToReturn())
                     };
                     writer.writeNext(row);
                 }

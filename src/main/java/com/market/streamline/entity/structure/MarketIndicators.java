@@ -24,20 +24,18 @@ public class MarketIndicators {
     @Column(name = "rsi_14")
     private Double rsi14;
 
+    @Column(name = "no_of_samples")
+    private int noOfSamples;
+
     public MarketIndicators() {}
 
-    public MarketIndicators(String stockSymbol, String timeframe, Double averageVolatility) {
-        this.stockSymbol = stockSymbol;
-        this.timeframe = timeframe;
-        this.averageVolatility = averageVolatility;
-    }
-
-    public MarketIndicators(String stockSymbol, String timeframe, Double averageVolatility, Double averageVolume, Double rsi14) {
+    public MarketIndicators(String stockSymbol, String timeframe, Double averageVolatility, Double averageVolume, Double rsi14, int noOfSamples) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.averageVolatility = averageVolatility;
         this.averageVolume = averageVolume;
         this.rsi14 = rsi14;
+        this.noOfSamples = noOfSamples;
     }
 
     public Long getId() { return id; }
@@ -61,4 +59,13 @@ public class MarketIndicators {
     // Backward compatibility methods for existing code
     public Double getVolatility() { return averageVolatility; }
     public void setVolatility(Double volatility) { this.averageVolatility = volatility; }
+
+
+    public int getNoOfSamples() {
+        return noOfSamples;
+    }
+
+    public void setNoOfSamples(int noOfSamples) {
+        this.noOfSamples = noOfSamples;
+    }
 }

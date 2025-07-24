@@ -2,9 +2,6 @@ package com.market.streamline.kafka.candle;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.market.database.DatabaseContextHolder;
-import com.market.streamline.aggregation.CandleAggregatedData;
-import com.market.streamline.aggregation.CandleAggregatedDataMapper;
-import com.market.streamline.aggregation.CandleDataAggregationService;
 import com.market.streamline.data.StockState;
 import com.market.streamline.entity.structure.CandleEntity;
 import com.market.streamline.entity.aggregation.CandleAggregatedDataEntity;
@@ -21,7 +18,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.*;
 
 @Component
@@ -39,11 +35,7 @@ public class CandleEventConsumer {
     @Autowired
     private LiquidityService liquidityService;
     @Autowired
-    private ZoneService zoneService;
-    @Autowired
     private ZoneRepository zoneRepository;
-    @Autowired
-    private TrendService trendService;
     @Autowired
     private TrendRepository trendRepository;
     @Autowired
@@ -59,11 +51,7 @@ public class CandleEventConsumer {
     @Autowired
     private LiquiditySweepRepository liquiditySweepRepository;
     @Autowired
-    private CandleDataAggregationService candleDataAggregationService;
-    @Autowired
     private CandleAggregatedDataRepository candleAggregatedDataRepository;
-    @Autowired
-    private CandleAggregatedDataMapper candleAggregatedDataMapper;
     @Autowired
     private CandleAggregatedDataCsvExporter csvExporter;
     @Autowired
@@ -138,7 +126,6 @@ public class CandleEventConsumer {
     private void processCandleClosure(CandleEntity candleEntity) {
         impulseZoneService.verifyZoneCorrectness(candleEntity);
         marketIndicatorsCalculationService.calculateIndicators(candleEntity);
-        saveCandleAggregatedData(candleEntity);
     }
 
     private void processCandle(CandleEntity candleEntity) {
@@ -164,31 +151,14 @@ public class CandleEventConsumer {
         );
     }
 
-    private void saveCandleAggregatedData(CandleEntity candleEntity) {
-
-        // TODO: Configure for multiple timeframes
-        if (Objects.equals(candleEntity.getTimeframe(), "1h")) {
-            CandleAggregatedData candleAggregatedData = candleDataAggregationService.generateInitialAggregatedData(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), candleEntity.getCandleTimestamp());
-            CandleAggregatedDataEntity aggregatedEntity = candleAggregatedDataMapper.toEntity(candleAggregatedData);
-            candleAggregatedDataRepository.save(aggregatedEntity);
-        }
-    }
-
     private void processEndOfEvents(String stockSymbol) {
         // TODO: Configure for multiple timeframes
         List<CandleAggregatedDataEntity> allAggregatedData = candleAggregatedDataRepository.findByStockSymbolAndTimeframeOrderByTimestamp(stockSymbol, "1h");
-        List<CandleAggregatedData> finalData = allAggregatedData.stream().map(
-                candleAggregatedDataMapper::fromEntity
-        ).toList();
-
-        // TODO: Optimise this, don't store in memory
-        List<CandleAggregatedData> finalProcessedData = candleDataAggregationService.fillTradeInformation(finalData);
 
         // Export the final processed data to CSV
         String csvFilePath = csvExporter.generateFilePath(stockSymbol, "data/processed");
-        csvExporter.exportToCsv(finalProcessedData, csvFilePath);
+        csvExporter.exportToCsv(allAggregatedData, csvFilePath);
         System.out.println("Exported aggregated data for " + stockSymbol + " to: " + csvFilePath);
-
         cleanUpData(stockSymbol);
     }
 

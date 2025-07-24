@@ -22,87 +22,87 @@ public class ChartAnnotationService {
     }
 
     public void processCandle(CandleEntity candleEntity, String type) {
-        ChartDTO chart = new ChartDTO(
-                "candle",
-                type,
-                new CandleData(
-                        candleEntity.getCandleTimestamp().toString(),
-                        candleEntity.getOpen(),
-                        candleEntity.getHigh(),
-                        candleEntity.getLow(),
-                        candleEntity.getClose(),
-                        candleEntity.getVolume(),
-                        candleEntity.getStockSymbol(),
-                        candleEntity.getTimeframe()
-                )
-        );
-
-        chartAnnotationProducer.sendAnnotation(chart);
+//        ChartDTO chart = new ChartDTO(
+//                "candle",
+//                type,
+//                new CandleData(
+//                        candleEntity.getCandleTimestamp().toString(),
+//                        candleEntity.getOpen(),
+//                        candleEntity.getHigh(),
+//                        candleEntity.getLow(),
+//                        candleEntity.getClose(),
+//                        candleEntity.getVolume(),
+//                        candleEntity.getStockSymbol(),
+//                        candleEntity.getTimeframe()
+//                )
+//        );
+//
+//        chartAnnotationProducer.sendAnnotation(chart);
     }
 
     public void processSwingPoint(SwingPoint swingPoint, String type) {
-        String high_low = swingPoint.getSwingType().equals("HIGH") ? "high" : "low";
-        String major_minor = swingPoint.getIsMajor() ? "major_" : "minor_";
-        ChartDTO chart = new ChartDTO(
-                "swing",
-                type,
-                new SwingData(
-                        major_minor + high_low,
-                        swingPoint.getCandleTimestamp().toString(),
-                        swingPoint.getSwingType().equals("HIGH"),
-                        swingPoint.getTimeframe()
-                )
-        );
-
-        chartAnnotationProducer.sendAnnotation(chart);
+//        String high_low = swingPoint.getSwingType().equals("HIGH") ? "high" : "low";
+//        String major_minor = swingPoint.getIsMajor() ? "major_" : "minor_";
+//        ChartDTO chart = new ChartDTO(
+//                "swing",
+//                type,
+//                new SwingData(
+//                        major_minor + high_low,
+//                        swingPoint.getCandleTimestamp().toString(),
+//                        swingPoint.getSwingType().equals("HIGH"),
+//                        swingPoint.getTimeframe()
+//                )
+//        );
+//
+//        chartAnnotationProducer.sendAnnotation(chart);
     }
 
     public void processBreakOfStructure(BreakOfStructure breakOfStructure, String type) {
-        ChartDTO chart = new ChartDTO(
-                "bos",
-                type,
-                new BOSData(
-                        breakOfStructure.getWeakSwingPoint().getCandleTimestamp().toString(),
-                        breakOfStructure.getCandleTimestamp().toString(),
-                        breakOfStructure.getDirection(),
-                        breakOfStructure.getTimeframe(),
-                        breakOfStructure.getWeakSwingPoint().getPrice()
-                )
-        );
-
-        chartAnnotationProducer.sendAnnotation(chart);
+//        ChartDTO chart = new ChartDTO(
+//                "bos",
+//                type,
+//                new BOSData(
+//                        breakOfStructure.getWeakSwingPoint().getCandleTimestamp().toString(),
+//                        breakOfStructure.getCandleTimestamp().toString(),
+//                        breakOfStructure.getDirection(),
+//                        breakOfStructure.getTimeframe(),
+//                        breakOfStructure.getWeakSwingPoint().getPrice()
+//                )
+//        );
+//
+//        chartAnnotationProducer.sendAnnotation(chart);
     }
 
     public void processZone(Zone zone, String type) {
-        LocalDateTime nextCandleTimestamp;
-        if (zone.getTimeframe().equals("1d")) {
-            nextCandleTimestamp = zone.getCandleTimestamp().plusDays(15);
-        } else {
-            nextCandleTimestamp = zone.getCandleTimestamp().plusHours(15);
-        }
-        ChartDTO chart = new ChartDTO(
-                "zone",
-                type,
-                new ZoneData(
-                        zone.getZoneType(),
-                        zone.getNearPoint(),
-                        zone.getFarPoint(),
-                        zone.getCandleTimestamp().toString(),
-                        nextCandleTimestamp.toString(),
-                        zone.getTimeframe()
-                )
-        );
-
-        chartAnnotationProducer.sendAnnotation(chart);
+//        LocalDateTime nextCandleTimestamp;
+//        if (zone.getTimeframe().equals("1d")) {
+//            nextCandleTimestamp = zone.getCandleTimestamp().plusDays(15);
+//        } else {
+//            nextCandleTimestamp = zone.getCandleTimestamp().plusHours(15);
+//        }
+//        ChartDTO chart = new ChartDTO(
+//                "zone",
+//                type,
+//                new ZoneData(
+//                        zone.getZoneType(),
+//                        zone.getNearPoint(),
+//                        zone.getFarPoint(),
+//                        zone.getCandleTimestamp().toString(),
+//                        nextCandleTimestamp.toString(),
+//                        zone.getTimeframe()
+//                )
+//        );
+//
+//        chartAnnotationProducer.sendAnnotation(chart);
     }
 
     public void processTrade(Trade trade, CandleEntity candleEntity, String type) {
-        ChartDTO chart = new ChartDTO(
-                "trade",
-                type,
-                getTradeData(candleEntity, trade, type)
-        );
-        chartAnnotationProducer.sendAnnotation(chart);
+//        ChartDTO chart = new ChartDTO(
+//                "trade",
+//                type,
+//                getTradeData(candleEntity, trade, type)
+//        );
+//        chartAnnotationProducer.sendAnnotation(chart);
     }
 
     private TradeData getTradeData(CandleEntity candleEntity, Trade trade, String action) {
@@ -142,19 +142,19 @@ public class ChartAnnotationService {
     }
 
     public void processLiquidity(Liquidity liquidity, String type) {
-        ChartDTO chart = new ChartDTO(
-                "liquidity",
-                type,
-                new LiquidityData(
-                        liquidity.getTimeframe(),
-                        liquidity.getStockSymbol(),
-                        liquidity.getLiquidityType(),
-                        liquidity.getPrice(),
-                        liquidity.getStrength(),
-                        liquidity.getCandleTimestamp().toString()
-                )
-        );
-
-        chartAnnotationProducer.sendAnnotation(chart);
+//        ChartDTO chart = new ChartDTO(
+//                "liquidity",
+//                type,
+//                new LiquidityData(
+//                        liquidity.getTimeframe(),
+//                        liquidity.getStockSymbol(),
+//                        liquidity.getLiquidityType(),
+//                        liquidity.getPrice(),
+//                        liquidity.getStrength(),
+//                        liquidity.getCandleTimestamp().toString()
+//                )
+//        );
+//
+//        chartAnnotationProducer.sendAnnotation(chart);
     }
 }

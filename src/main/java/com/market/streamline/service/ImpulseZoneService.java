@@ -229,6 +229,7 @@ public class ImpulseZoneService {
         }
 
         if (zoneRepository.existsByStrongSwingPointAndZoneType(bosStart.getStrongSwingPoint(), currentDirection.equals("BULLISH") ? "DEMAND" : "SUPPLY")) {
+            // TODO: Update zone related parameters - Strength, Acceptance, Volume
             return;
         }
 
