@@ -59,12 +59,15 @@ public class ImpulseZoneService {
                 candleEntity.getStockSymbol(),
                 candleEntity.getTimeframe(),
                 zone.getZoneType(),
-                candleEntity.getCandleTimestamp()
+                candleEntity.getCandleTimestamp(),
+                candleEntity.getCandleTimestamp().minusMonths(1)
         );
 
         double volatilityValue = marketIndicators.getVolatility();
-        Double total_volume = candleRepository.sumVolumesBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zone.getCandleTimestamp(), zone.getIdentifiedAt());
+        Double total_volume = candleRepository.maxVolumeBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zone.getCandleTimestamp(), zone.getIdentifiedAt());
+        Long total_candles = candleRepository.countCandlesBetweenTimestamps(candleEntity.getStockSymbol(), candleEntity.getTimeframe(), zone.getCandleTimestamp(), zone.getIdentifiedAt());
         zone.setVolume(total_volume);
+        zone.setStrength(Double.valueOf(total_candles));
 
         String zoneType = zone.getZoneType();
         boolean isSave = true;
@@ -122,12 +125,14 @@ public class ImpulseZoneService {
 
     public void invalidateZones(CandleEntity candleEntity, boolean isHighCheck) {
         Double currentPrice = isHighCheck ? candleEntity.getHigh() : candleEntity.getLow();
+        LocalDateTime oneMonthAgoTimestamp = candleEntity.getCandleTimestamp().minusMonths(1);
         List<Zone> supplyZones = zoneRepository.findZonesByTypeWithFarPointPriceCondition(
                 candleEntity.getStockSymbol(),
                 candleEntity.getTimeframe(),
                 "SUPPLY",
                 currentPrice,
-                candleEntity.getCandleTimestamp()
+                candleEntity.getCandleTimestamp(),
+                oneMonthAgoTimestamp
         );
 
         List<Zone> demandZones = zoneRepository.findZonesByTypeWithFarPointPriceCondition(
@@ -135,28 +140,11 @@ public class ImpulseZoneService {
                 candleEntity.getTimeframe(),
                 "DEMAND",
                 currentPrice,
-                candleEntity.getCandleTimestamp()
+                candleEntity.getCandleTimestamp(),
+                oneMonthAgoTimestamp
         );
         List<Zone> finalZones = Stream.concat(supplyZones.stream(), demandZones.stream()).toList();
         finalZones.forEach(zone -> {
-            if ("ACTIVE".equals(zone.getType())) {
-
-                // When invalidating zones, mark any active trade as loss.
-                Optional<Trade> trade = tradeRepository.findByStockSymbolAndTimeframeAndZoneAndIsActiveTrue(
-                        zone.getStockSymbol(),
-                        zone.getTimeframe(),
-                        zone
-                );
-                if (trade.isEmpty()) {
-                    zone.setType("INVALID");
-                    zoneRepository.save(zone);
-                    chartAnnotationService.processZone(zone, "deleted");
-                } else {
-                    tradeSimulationService.evaluateTrade(trade.get(), zone, candleEntity, "LOSS");
-                }
-
-                return;
-            }
             zone.setType("INVALID");
             zoneRepository.save(zone);
             chartAnnotationService.processZone(zone, "deleted");
@@ -228,10 +216,10 @@ public class ImpulseZoneService {
             }
         }
 
-        if (zoneRepository.existsByStrongSwingPointAndZoneType(bosStart.getStrongSwingPoint(), currentDirection.equals("BULLISH") ? "DEMAND" : "SUPPLY")) {
-            // TODO: Update zone related parameters - Strength, Acceptance, Volume
-            return;
-        }
+//        if (zoneRepository.existsByStrongSwingPointAndZoneType(bosStart.getStrongSwingPoint(), currentDirection.equals("BULLISH") ? "DEMAND" : "SUPPLY")) {
+//            // TODO: Update zone related parameters - Strength, Acceptance, Volume
+//            return;
+//        }
 
         Optional<Zone> zone = getZone(bosStart, bos, higherTimeframe, swingPoint, volatilityValue);
         if (zone.isEmpty()) {
@@ -267,10 +255,10 @@ public class ImpulseZoneService {
         double nearPoint, farPoint;
         boolean isDemand = end.getDirection().equals("BULLISH");
         if (isDemand) {
-            nearPoint = actualPrice * (1 + 1.5*volatilityValue/100);
+            nearPoint = actualPrice * (1 + 1*volatilityValue/100);
             farPoint = actualPrice;
         } else {
-            nearPoint = actualPrice * ( 1 - 1.5*volatilityValue/100);
+            nearPoint = actualPrice * ( 1 - 1*volatilityValue/100);
             farPoint = actualPrice;
         }
         LocalDateTime identifiedAt = mapTimestampToHigherTimeframe(strongSwingPoint);
@@ -284,7 +272,6 @@ public class ImpulseZoneService {
                 "NA",
                 zoneVolume,
                 zoneStrength,
-                start.getStrongSwingPoint(), // Link the strong swing point
                 0, // No of taps starts at 0
                 identifiedAt // When the zone was identified
         );

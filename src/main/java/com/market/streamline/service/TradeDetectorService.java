@@ -8,6 +8,7 @@ import com.market.streamline.repository.TradeRepository;
 import com.market.streamline.repository.ZoneRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -30,7 +31,7 @@ public class TradeDetectorService {
         String stockSymbol = candleEntity.getStockSymbol();
         String timeframe = candleEntity.getTimeframe();
 
-        if (tradeRepository.existsByStockSymbolAndTimeframeAndIsActiveTrue(stockSymbol, timeframe)) {
+        if (tradeRepository.existsByStockSymbolAndTimeframeAndResultAndIsActiveTrue(stockSymbol, timeframe, "PENDING")) {
             return; // Skip if there's already an active trade
         }
 
@@ -43,8 +44,10 @@ public class TradeDetectorService {
 
         double currentPrice = isHighCheck ? candleEntity.getHigh() : candleEntity.getLow();
 
-        Optional<Zone> mayBeDemandZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "DEMAND", candleEntity.getCandleTimestamp());
-        Optional<Zone> mayBeSupplyZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "SUPPLY", candleEntity.getCandleTimestamp());
+        LocalDateTime oneMonthAgoTimestamp = candleEntity.getCandleTimestamp().minusMonths(1);
+
+        Optional<Zone> mayBeDemandZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "DEMAND", candleEntity.getCandleTimestamp(), oneMonthAgoTimestamp);
+        Optional<Zone> mayBeSupplyZone = zoneRepository.findLatestZoneByType(stockSymbol, timeframe, "SUPPLY", candleEntity.getCandleTimestamp(), oneMonthAgoTimestamp);
 
         // TODO: Decide proximity threshold to decide the trade
         // Check demand zones

@@ -95,6 +95,12 @@ public class CandleAggregatedDataEntity {
     @Column(name = "time_to_return")
     private Long timeToReturn;
 
+    @Column(name = "supply_impulse_length")
+    private Long supplyImpulseLength;
+
+    @Column(name = "demand_impulse_length")
+    private Long demandImpulseLength;
+
     public CandleAggregatedDataEntity() {}
 
     public Long getId() {
@@ -327,5 +333,21 @@ public class CandleAggregatedDataEntity {
 
     public void setTimeToReturn(Long timeToReturn) {
         this.timeToReturn = timeToReturn;
+    }
+
+    public Long getSupplyImpulseLength() {
+        return supplyImpulseLength;
+    }
+
+    public void setSupplyImpulseLength(Long supplyImpulseLength) {
+        this.supplyImpulseLength = supplyImpulseLength;
+    }
+
+    public Long getDemandImpulseLength() {
+        return demandImpulseLength;
+    }
+
+    public void setDemandImpulseLength(Long demandImpulseLength) {
+        this.demandImpulseLength = demandImpulseLength;
     }
 }

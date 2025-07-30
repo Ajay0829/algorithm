@@ -106,11 +106,11 @@ public class DataProcessingController {
 
         List<CandleEvent> allCandles = new ArrayList<>();
 
-        // Read 15m data
-        File file15m = new File(originalDir, symbol + "_15m.csv");
-        if (file15m.exists()) {
-            allCandles.addAll(readCandlesFromFile(file15m, symbol, "15m"));
-        }
+//        // Read 15m data
+//        File file15m = new File(originalDir, symbol + "_15m.csv");
+//        if (file15m.exists()) {
+//            allCandles.addAll(readCandlesFromFile(file15m, symbol, "15m"));
+//        }
 
         // Read 1h data
         File file1h = new File(originalDir, symbol + "_1h.csv");

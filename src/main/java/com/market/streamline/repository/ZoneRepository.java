@@ -20,37 +20,45 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
             String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType
     );
 
-    boolean existsByStrongSwingPointAndZoneType(SwingPoint strongSwingPoint, String zoneType);
+//    boolean existsByStrongSwingPointAndZoneType(SwingPoint strongSwingPoint, String zoneType);
 
     Zone findTopByStockSymbolAndTimeframeAndIdentifiedAtOrderByIdDesc(String stockSymbol, String timeframe, LocalDateTime identifiedAt);
+
+    @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe " +
+//            "AND (z.type = 'INVALID' OR z.type = 'VALID' OR z.type = 'ACTIVE') " +
+//            "AND z.candleTimestamp >= :oneMonthAgoTimestamp " +
+            "ORDER BY z.candleTimestamp DESC LIMIT 1")
+    Optional<Zone> findLatestZone(@Param("stockSymbol") String stockSymbol,
+                                        @Param("timeframe") String timeframe);
 
     // Method to find the latest zone by zone type
     @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe AND z.zoneType = :zoneType " +
             "AND (z.type IS NULL OR z.type = 'VALID') " +
             "AND z.identifiedAt < :currentTimestamp " +
+            "AND z.candleTimestamp >= :oneMonthAgoTimestamp " +
             "ORDER BY z.identifiedAt DESC LIMIT 1")
     Optional<Zone> findLatestZoneByType(@Param("stockSymbol") String stockSymbol,
-                                       @Param("timeframe") String timeframe,
-                                       @Param("zoneType") String zoneType,
-                                       @Param("currentTimestamp") LocalDateTime currentTimestamp);
+                                        @Param("timeframe") String timeframe,
+                                        @Param("zoneType") String zoneType,
+                                        @Param("currentTimestamp") LocalDateTime currentTimestamp,
+                                        @Param("oneMonthAgoTimestamp") LocalDateTime oneMonthAgoTimestamp);
 
     @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe AND z.zoneType = :zoneType " +
             "AND (z.type IS NULL OR z.type = 'ACTIVE' OR z.type = 'VALID') " +
             "AND z.identifiedAt < :currentTimestamp " +
+            "AND z.candleTimestamp >= :oneMonthAgoTimestamp " +
             "ORDER BY z.identifiedAt DESC LIMIT 1")
     Optional<Zone> findLatestZoneByTypeActiveOrValid(
             @Param("stockSymbol") String stockSymbol,
             @Param("timeframe") String timeframe,
             @Param("zoneType") String zoneType,
-            @Param("currentTimestamp") LocalDateTime currentTimestamp);
+            @Param("currentTimestamp") LocalDateTime currentTimestamp,
+            @Param("oneMonthAgoTimestamp") LocalDateTime oneMonthAgoTimestamp);
 
-
-    // Method to fetch all zones of a particular type with farPoint price conditions
-    // For SUPPLY zones: returns zones where current price > farPoint
-    // For DEMAND zones: returns zones where current price < farPoint
     @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe AND z.zoneType = :zoneType " +
             "AND (z.type IS NULL OR z.type = 'VALID' OR z.type = 'ACTIVE') " +
             "AND z.identifiedAt < :currentTimestamp " +
+            "AND z.candleTimestamp >= :oneMonthAgoTimestamp " +
             "AND ((:zoneType = 'SUPPLY' AND :currentPrice > z.farPoint) OR " +
             "     (:zoneType = 'DEMAND' AND :currentPrice < z.farPoint)) " +
             "ORDER BY z.candleTimestamp DESC")
@@ -58,7 +66,8 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
                                                          @Param("timeframe") String timeframe,
                                                          @Param("zoneType") String zoneType,
                                                          @Param("currentPrice") Double currentPrice,
-                                                         @Param("currentTimestamp") LocalDateTime currentTimestamp);
+                                                         @Param("currentTimestamp") LocalDateTime currentTimestamp,
+                                                         @Param("oneMonthAgoTimestamp") LocalDateTime oneMonthAgoTimestamp);
 
 
     @Modifying

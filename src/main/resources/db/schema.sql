@@ -95,7 +95,6 @@ CREATE TABLE IF NOT EXISTS zones (
     volume DOUBLE PRECISION,
     strength DOUBLE PRECISION,
     no_of_taps INTEGER,
-    strong_swing_point_id INTEGER REFERENCES swing_points(id) ON DELETE CASCADE,
     zone_type VARCHAR(16), -- SUPPLY, DEMAND (if you use this instead of type)
     identified_at TIMESTAMP,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, zone_type)
@@ -143,6 +142,7 @@ CREATE TABLE IF NOT EXISTS trades (
     timestamp TIMESTAMP NOT NULL,
     entry_price DOUBLE PRECISION NOT NULL,
     stop_loss DOUBLE PRECISION NOT NULL,
+    loss_point DOUBLE PRECISION NOT NULL,
     take_profit DOUBLE PRECISION NOT NULL,
     trade_type VARCHAR(255) NOT NULL,
     result VARCHAR(255),
@@ -187,6 +187,8 @@ CREATE TABLE IF NOT EXISTS candle_aggregated_data (
     entry_price DOUBLE PRECISION,
     trade_result VARCHAR(255),
     time_to_return INTEGER,
+    supply_impulse_length INTEGER,
+    demand_impulse_length INTEGER,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
     );

@@ -91,7 +91,6 @@ public class ZoneService {
                 "ACTIVE",
                 zoneVolume,
                 zoneStrength,
-                null,
                 0,
                 candleEntity.getCandleTimestamp()
 

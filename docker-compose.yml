@@ -1,3 +1,4 @@
+# Docker Compose file with startup script for Kafka
 version: '3.8'
 services:
   postgres:
@@ -29,7 +30,30 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    # This command block is the new addition.
+    # It runs a shell script inside the container upon startup.
+    command: >
+      bash -c "
+        # 1. Run the default Confluent Kafka entrypoint script in the background.
+        #    This starts the Kafka broker.
+        /etc/confluent/docker/run &
+      
+        # 2. Wait for the Kafka broker to be ready.
+        #    'cub' is a Confluent utility that can check service health.
+        #    The syntax is 'cub kafka-ready <number of brokers> <timeout> -b <bootstrap-server>'.
+        echo 'Waiting for Kafka to be ready...' &&
+        cub kafka-ready 1 120 -b localhost:9092 &&
+        echo 'Kafka is ready!' &&
+      
+        # 3. Create the specified Kafka topics.
+        #    These commands will only run if the broker is ready.
+        kafka-topics --create --topic candle-added --partitions 20 --replication-factor 1 --bootstrap-server localhost:9092 &&
+        kafka-topics --create --topic chart-annotations --partitions 1 --replication-factor 1 --bootstrap-server localhost:9092 &&
+      
+        # 4. Use 'wait' to keep the container running.
+        #    It waits for the background Kafka process to exit.
+        wait
+      "
 
 volumes:
   pgdata:
-
