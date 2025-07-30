@@ -11,8 +11,10 @@ import com.market.streamline.repository.LiquiditySweepRepository;
 import com.market.streamline.repository.MarketIndicatorsRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 public class LiquidityService {
@@ -77,8 +79,6 @@ public class LiquidityService {
             } else {
                 return;
             }
-            // TODO: Update losing trades associated with this liquidity to be liquidity_sweep.
-
             // Send chart annotation for liquidity deletion (swept)
             sendLiquidityChartEvent(liquidity, "swept");
             liquidityRepository.delete(liquidity);
@@ -147,28 +147,26 @@ public class LiquidityService {
         if (marketIndicators == null) {
             return;
         }
+        Double currentPrice = isHighCheck ? candleEntity.getHigh() : candleEntity.getLow();
 
         // Fetch all the liquidity zones based on high or low check
-        List<Liquidity> liquidities = getLiquiditiesByPriceAndType(
+        List<Liquidity> liquidities = getLiquiditiesByPrice(
                 candleEntity.getStockSymbol(),
                 candleEntity.getTimeframe(),
-                isHighCheck ? candleEntity.getHigh() : candleEntity.getLow(),
-                isHighCheck
+                currentPrice
         );
 
+
         liquidities.forEach(liquidity -> {
-            if (isHighCheck) {
-                double price = candleEntity.getHigh();
-                double liquidityPrice = liquidity.getPrice();
-                if (price > liquidityPrice* (1 + marketIndicators.getVolatility() / 100)) {
+            double liquidityPrice = liquidity.getPrice();
+            if (liquidity.getLiquidityType().equals("SELL_SWEEP")) {
+                if (currentPrice > liquidityPrice* (1 + marketIndicators.getVolatility() / 100)) {
                     // Send chart annotation for liquidity deletion before deleting
                     sendLiquidityChartEvent(liquidity, "deleted");
                     liquidityRepository.delete(liquidity);
                 }
             } else {
-                double price = candleEntity.getLow();
-                double liquidityPrice = liquidity.getPrice();
-                if (price < liquidityPrice * (1 - marketIndicators.getVolatility() / 100)) {
+                if (currentPrice < liquidityPrice * (1 - marketIndicators.getVolatility() / 100)) {
                     // Send chart annotation for liquidity deletion before deleting
                     sendLiquidityChartEvent(liquidity, "deleted");
                     liquidityRepository.delete(liquidity);
@@ -177,25 +175,22 @@ public class LiquidityService {
         });
     }
 
-    public List<Liquidity> getLiquiditiesByPriceAndType(String stockSymbol, String timeframe,
-                                                        Double currentPrice, boolean highCheck) {
-        if (highCheck) {
-            // For high check: find all SELL_SWEEP liquidity prices < current high
-            return liquidityRepository.findLiquiditiesBelowPrice(
+    public List<Liquidity> getLiquiditiesByPrice(String stockSymbol, String timeframe,
+                                                        Double currentPrice) {
+        List<Liquidity> sellLiquidities = liquidityRepository.findLiquiditiesBelowPrice(
                     stockSymbol,
                     timeframe,
                     "SELL_SWEEP",
                     currentPrice
             );
-        } else {
-            // For low check: find all BUY_SWEEP liquidity prices > current low
-            return liquidityRepository.findLiquiditiesAbovePrice(
+        List<Liquidity> buyLiquidities = liquidityRepository.findLiquiditiesAbovePrice(
                     stockSymbol,
                     timeframe,
                     "BUY_SWEEP",
                     currentPrice
             );
-        }
+
+        return Stream.concat(sellLiquidities.stream(), buyLiquidities.stream()).toList();
     }
 
     /**

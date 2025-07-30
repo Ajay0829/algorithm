@@ -62,6 +62,8 @@ public class CandleEventConsumer {
     private MarketIndicatorsCalculationService marketIndicatorsCalculationService;
     @Autowired
     private MarketIndicatorsRepository marketIndicatorsRepository;
+    @Autowired
+    private ImbalanceDetectionService imbalanceDetectionService;
 
     private final ConcurrentHashMap<String, StockState> stockStateMap = new ConcurrentHashMap<>();
 
@@ -114,17 +116,18 @@ public class CandleEventConsumer {
     }
 
     private void processCandlePoint(CandleEntity candleEntity, boolean isHighCheck) {
-        tradeSimulationService.processActiveTrade(candleEntity, isHighCheck);
+        tradeSimulationService.processTrades(candleEntity, isHighCheck);
         impulseZoneService.invalidateZones(candleEntity, isHighCheck);
-        tradeDetectorService.findTradeOpportunity(candleEntity, isHighCheck);
         liquidityService.invalidateLiquidityZones(candleEntity, isHighCheck);
+        tradeDetectorService.findTradeOpportunity(candleEntity, isHighCheck);
         swingPointService.confirmSwingPointIfAny(candleEntity, isHighCheck);
         breakOfStructureService.checkForBreakOfStructure(candleEntity, isHighCheck);
         swingPointService.checkForSwingPoint(candleEntity, isHighCheck);
     }
 
     private void processCandleClosure(CandleEntity candleEntity) {
-        impulseZoneService.verifyZoneCorrectness(candleEntity);
+//        impulseZoneService.verifyZoneCorrectness(candleEntity);
+        imbalanceDetectionService.detectImbalance(candleEntity);
         marketIndicatorsCalculationService.calculateIndicators(candleEntity);
     }
 

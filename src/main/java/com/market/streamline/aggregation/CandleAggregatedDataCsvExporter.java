@@ -56,7 +56,9 @@ public class CandleAggregatedDataCsvExporter {
                     "trade",
                     "entry_price",
                     "trade_result",
-                    "time_to_return"
+                    "time_to_return",
+                    "demand_impulse_length",
+                    "supply_impulse_length"
                 };
                 writer.writeNext(header);
 
@@ -90,7 +92,9 @@ public class CandleAggregatedDataCsvExporter {
                         data.getTrade(),
                         String.valueOf(data.getEntryPrice()),
                         data.getTradeResult(),
-                        String.valueOf(data.getTimeToReturn())
+                        String.valueOf(data.getTimeToReturn()),
+                        String.valueOf(data.getDemandImpulseLength()),
+                        String.valueOf(data.getSupplyImpulseLength())
                     };
                     writer.writeNext(row);
                 }

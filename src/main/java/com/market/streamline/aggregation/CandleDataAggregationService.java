@@ -99,16 +99,19 @@ public class CandleDataAggregationService {
     }
 
     private void setSupplyDemandPrices(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
-        Optional<Zone> demandZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "DEMAND", candleTimestamp);
-        Optional<Zone> supplyZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "SUPPLY", candleTimestamp);
+        LocalDateTime oneMonthAgoTimestamp = candleTimestamp.minusMonths(1);
+        Optional<Zone> demandZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "DEMAND", candleTimestamp, oneMonthAgoTimestamp);
+        Optional<Zone> supplyZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "SUPPLY", candleTimestamp, oneMonthAgoTimestamp);
 
         demandZone.ifPresent(zone -> {
             data.setDemandPrice(zone.getNearPoint());
             data.setDemandVolume(zone.getVolume());
+            data.setDemandImpulseLength(zone.getStrength().longValue());
         });
         supplyZone.ifPresent(zone -> {
             data.setSupplyPrice(zone.getNearPoint());
             data.setSupplyVolume(zone.getVolume());
+            data.setSupplyImpulseLength(zone.getStrength().longValue());
         });
     }
 

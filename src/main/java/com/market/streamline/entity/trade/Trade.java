@@ -26,6 +26,9 @@ public class Trade {
     @Column(name = "stop_loss", nullable = false)
     private Double stopLoss;
 
+    @Column(name = "loss_point", nullable = false)
+    private Double lossPoint;
+
     @Column(name = "take_profit", nullable = false)
     private Double takeProfit;
 
@@ -47,12 +50,13 @@ public class Trade {
 
     public Trade() {}
 
-    public Trade(String stockSymbol, String timeframe, LocalDateTime timestamp, Double entryPrice, Double stopLoss, Double takeProfit, String tradeType, Boolean isActive, long timeToReturn) {
+    public Trade(String stockSymbol, String timeframe, LocalDateTime timestamp, Double entryPrice, Double stopLoss, Double lossPoint, Double takeProfit, String tradeType, Boolean isActive, long timeToReturn) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.timestamp = timestamp;
         this.entryPrice = entryPrice;
         this.stopLoss = stopLoss;
+        this.lossPoint = lossPoint;
         this.takeProfit = takeProfit;
         this.tradeType = tradeType;
         this.isActive = isActive;
@@ -103,5 +107,12 @@ public class Trade {
 
     public void setTimeToReturn(long timeToReturn) {
         this.timeToReturn = timeToReturn;
+    }
+
+    public Double getLossPoint() {
+        return lossPoint;
+    }
+    public void setLossPoint(Double lossPoint) {
+        this.lossPoint = lossPoint;
     }
 }

@@ -10,6 +10,7 @@ import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.*;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -33,9 +34,14 @@ public class TradeSimulationService {
         this.candleAggregatedDataRepository = candleAggregatedDataRepository;
     }
 
+    public void processTrades(CandleEntity candleEntity, boolean isHighCheck) {
+        processActiveTrade(candleEntity, isHighCheck);
+        processSweepTrade(candleEntity, isHighCheck);
+    }
+
     public void processActiveTrade(CandleEntity candleEntity, boolean isHighCheck) {
-        Optional<Trade> tradeOptional = tradeRepository.findFirstByStockSymbolAndTimeframeAndIsActiveTrue(
-                candleEntity.getStockSymbol(), candleEntity.getTimeframe());
+        Optional<Trade> tradeOptional = tradeRepository.findFirstByStockSymbolAndTimeframeAndResultAndIsActiveTrue(
+                candleEntity.getStockSymbol(), candleEntity.getTimeframe(), "PENDING");
         if (tradeOptional.isPresent()) {
             Trade trade = tradeOptional.get();
             double currentHigh = candleEntity.getHigh();
@@ -45,13 +51,16 @@ public class TradeSimulationService {
             if (isHighCheck) {
                 if (trade.getTradeType().equals("BUY") && currentHigh >= trade.getTakeProfit()) {
                     evaluateTrade(trade, zone, candleEntity, "WIN");
-                } else if (trade.getTradeType().equals("SELL") && currentHigh >= trade.getStopLoss()) {
+                } else if (trade.getTradeType().equals("SELL") && currentHigh >= trade.getLossPoint()) {
                     evaluateTrade(trade, zone, candleEntity, "LOSS");
+                } else if (trade.getTradeType().equals("SELL") && currentHigh >= trade.getStopLoss()) {
+                    evaluateTrade(trade, zone, candleEntity, "SWEEP");
                 }
             } else {
-                if (trade.getTradeType().equals("BUY") && currentLow <= trade.getStopLoss()) {
+                if (trade.getTradeType().equals("BUY") && currentLow <= trade.getLossPoint()) {
                     evaluateTrade(trade, zone, candleEntity, "LOSS");
-
+                } else if (trade.getTradeType().equals("BUY") && currentLow <= trade.getStopLoss()) {
+                    evaluateTrade(trade, zone, candleEntity, "SWEEP");
                 } else if (trade.getTradeType().equals("SELL") && currentLow <= trade.getTakeProfit()) {
                     evaluateTrade(trade, zone, candleEntity, "WIN");
                 }
@@ -59,13 +68,48 @@ public class TradeSimulationService {
         }
     }
 
+    public void processSweepTrade(CandleEntity candleEntity, boolean isHighCheck) {
+        Optional<Trade> tradeOptional = tradeRepository.findFirstByStockSymbolAndTimeframeAndResultAndIsActiveTrue(
+                candleEntity.getStockSymbol(), candleEntity.getTimeframe(), "SWEEP");
+        if (tradeOptional.isPresent()) {
+            Trade trade = tradeOptional.get();
+            double currentHigh = candleEntity.getHigh();
+            double currentLow = candleEntity.getLow();
+            Zone zone = trade.getZone();
+
+            if (isHighCheck) {
+                if (trade.getTradeType().equals("BUY") && currentHigh >= trade.getTakeProfit()) {
+                    trade.setIsActive(false);
+                    evaluateTrade(trade, zone, candleEntity, "SWEEP");
+                } else if (trade.getTradeType().equals("SELL") && currentHigh >= trade.getLossPoint()) {
+                    evaluateTrade(trade, zone, candleEntity, "LOSS");
+                }
+            } else {
+                if (trade.getTradeType().equals("BUY") && currentLow <= trade.getLossPoint()) {
+                    evaluateTrade(trade, zone, candleEntity, "LOSS");
+                } else if (trade.getTradeType().equals("SELL") && currentLow <= trade.getTakeProfit()) {
+                    trade.setIsActive(false);
+                    evaluateTrade(trade, zone, candleEntity, "SWEEP");
+                }
+            }
+        }
+    }
+
+    // SL HIT, LOSS NOT HIT, TP HIT -> SWEEP
+    // SL HIT, LOSS HIT -> LOSS, Active False
+    // SL HIT, TP HIT -> WIN, Active False
+    // SL HIT Active True
     public void evaluateTrade(Trade trade, Zone zone, CandleEntity candleEntity, String result) {
         trade.setResult(result);
         saveResultToCandleAggregatedData(trade, result);
-        trade.setIsActive(false);
+
+        if (Objects.equals(result, "LOSS") || Objects.equals(result, "WIN")) {
+            trade.setIsActive(false);
+        }
         zone.setType(result.equals("WIN") ? "VALID" : "INVALID");
         zoneRepository.save(zone);
         tradeRepository.save(trade);
+
         if (zone.getType().equals("INVALID")) {
             chartAnnotationService.processZone(zone, "deleted");
         }
@@ -91,15 +135,17 @@ public class TradeSimulationService {
         }
 
         double volatilityValue = marketIndicators.getVolatility();
-        double stopLossPrice, targetPrice;
+        double stopLossPrice, targetPrice, lossPoint;
         String zoneType = zone.getZoneType();
 
         if (zoneType.equals("DEMAND")) {
-            stopLossPrice = entryPrice - entryPrice * 2*volatilityValue/100;
-            targetPrice = entryPrice + entryPrice * 5*volatilityValue/100;
+            stopLossPrice = entryPrice - entryPrice * 1*volatilityValue/100;
+            lossPoint = stopLossPrice - entryPrice * 1.5*volatilityValue/100;
+            targetPrice = entryPrice + entryPrice * 2.5*volatilityValue/100;
         } else {
-            stopLossPrice = entryPrice + entryPrice * 2*volatilityValue/100;
-            targetPrice = entryPrice - entryPrice * 5*volatilityValue/100;
+            stopLossPrice = entryPrice + entryPrice * 1*volatilityValue/100;
+            lossPoint = entryPrice + entryPrice * 1.5*volatilityValue/100;
+            targetPrice = entryPrice - entryPrice * 2.5*volatilityValue/100;
         }
 
         long tradingHours = candleRepository.countByStockSymbolAndTimeframeAndCandleTimestampBetween(
@@ -115,6 +161,7 @@ public class TradeSimulationService {
                 candleEntity.getCandleTimestamp(),
                 entryPrice,
                 stopLossPrice,
+                lossPoint,
                 targetPrice,
                 zone.getZoneType().equals("DEMAND") ? "BUY" : "SELL",
                 true,
