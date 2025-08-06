@@ -22,9 +22,8 @@ public class SwingPointService {
     private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
     private final LiquidityService liquidityService;
-    private final ImpulseZoneService impulseZoneService;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, LiquidityService liquidityService, ImpulseZoneService impulseZoneService) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, LiquidityService liquidityService) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
@@ -32,7 +31,6 @@ public class SwingPointService {
         this.chartAnnotationService = chartAnnotationService;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
         this.liquidityService = liquidityService;
-        this.impulseZoneService = impulseZoneService;
     }
 
     public void confirmSwingPointIfAny(CandleEntity candleEntity, boolean isHighCheck) {
@@ -257,11 +255,6 @@ public class SwingPointService {
     public void handleSwingPointEvent(SwingPoint swingPoint) {
         if (swingPoint.getConfirmed()) {
             liquidityService.checkLiquiditySweep(swingPoint);
-        }
-
-        // Immediately after I get a first major swing point ( 5 window inflection )
-        if (swingPoint.getIsMajor() && !swingPoint.getConfirmed()) {
-//            impulseZoneService.detectHTFZone(swingPoint);
         }
 
         chartAnnotationService.processSwingPoint(swingPoint, "created");
