@@ -3,15 +3,18 @@ package com.market.streamline.service;
 import com.market.streamline.entity.structure.CandleEntity;
 import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.zone.Zone;
+import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.CandleRepository;
 import com.market.streamline.repository.MarketIndicatorsRepository;
 import com.market.streamline.repository.ZoneRepository;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static java.lang.Double.max;
 import static java.lang.Math.abs;
@@ -24,12 +27,17 @@ public class ImbalanceDetectionService {
     private final CandleRepository candleRepository;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
     private final Environment env;
+    private final ChartAnnotationService chartAnnotationService;
 
-    public ImbalanceDetectionService(ZoneRepository zoneRepository, CandleRepository candleRepository, MarketIndicatorsRepository marketIndicatorsRepository, Environment env) {
+    public ImbalanceDetectionService(ZoneRepository zoneRepository,
+                                     CandleRepository candleRepository,
+                                     MarketIndicatorsRepository marketIndicatorsRepository,
+                                     Environment env, ChartAnnotationService chartAnnotationService) {
         this.zoneRepository = zoneRepository;
         this.candleRepository = candleRepository;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
         this.env = env;
+        this.chartAnnotationService = chartAnnotationService;
     }
 
     public void detectImbalance(CandleEntity candleEntity) {
@@ -83,8 +91,11 @@ public class ImbalanceDetectionService {
                 candleEntity.getCandleTimestamp().minusMonths(1)
         );
 
-        Zone newZone = getNewZone(candleEntity, recentCandles, index, total_move > 0 ? "DEMAND" : "SUPPLY", average_volatility);
+        if (existingZoneOpt.isPresent() && Boolean.TRUE.equals(existingZoneOpt.get().getImpulseExtending())) {
+            return;
+        }
 
+        Zone newZone = getNewZone(candleEntity, recentCandles, index, total_move > 0 ? "DEMAND" : "SUPPLY", average_volatility);
         if (existingZoneOpt.isEmpty()) {
             zoneRepository.save(newZone);
         } else {
@@ -115,12 +126,17 @@ public class ImbalanceDetectionService {
         CandleEntity impulseStart = recentCandles.get(index - 1);
         CandleEntity impulseEnd = recentCandles.get(recentCandles.size() - 1);
         double nearPoint, farPoint;
+
+        // Calculate the length of the impulse move.
+        double impulseLength = abs(impulseEnd.getClose() - impulseStart.getClose());
+        // Risk that provides at least 2.5R when price reaches the impulse end again.
+        double riskPerUnit = impulseLength / 3.5;
         if (zoneType.equals("DEMAND")) {
-            farPoint = impulseStart.getClose();
-            nearPoint = impulseStart.getClose() + impulseStart.getLow()*volatility/100;
+            farPoint = impulseStart.getLow();
+            nearPoint = farPoint + riskPerUnit;
         } else {
-            farPoint = impulseStart.getClose();
-            nearPoint = impulseStart.getClose() - impulseStart.getClose() * volatility / 100;
+            farPoint = impulseStart.getHigh();
+            nearPoint = farPoint - riskPerUnit;
         }
         double max_volume = 0.0;
         for (int i = index; i < recentCandles.size(); i++) {
@@ -140,9 +156,42 @@ public class ImbalanceDetectionService {
                 max_volume,
                 total_price_move,
                 0, // No of taps starts at 0
-                candleEntity.getCandleTimestamp()
+                candleEntity.getCandleTimestamp(),
+                riskPerUnit,
+                null,
+                null,
+                false
         );
     }
+
+    public void invalidateZones(CandleEntity candleEntity, boolean isHighCheck) {
+        Double currentPrice = isHighCheck ? candleEntity.getHigh() : candleEntity.getLow();
+        LocalDateTime oneMonthAgoTimestamp = candleEntity.getCandleTimestamp().minusMonths(1);
+        List<Zone> supplyZones = zoneRepository.findZonesByTypeWithFarPointPriceCondition(
+                candleEntity.getStockSymbol(),
+                candleEntity.getTimeframe(),
+                "SUPPLY",
+                currentPrice,
+                candleEntity.getCandleTimestamp(),
+                oneMonthAgoTimestamp
+        );
+
+        List<Zone> demandZones = zoneRepository.findZonesByTypeWithFarPointPriceCondition(
+                candleEntity.getStockSymbol(),
+                candleEntity.getTimeframe(),
+                "DEMAND",
+                currentPrice,
+                candleEntity.getCandleTimestamp(),
+                oneMonthAgoTimestamp
+        );
+        List<Zone> finalZones = Stream.concat(supplyZones.stream(), demandZones.stream()).toList();
+        finalZones.forEach(zone -> {
+            zone.setType("INVALID");
+            zoneRepository.save(zone);
+            chartAnnotationService.processZone(zone, "deleted");
+        });
+    }
+
 
     public double getMultiplier() {
         String key = "impulse.threshold.multiplier";

@@ -76,6 +76,8 @@ public class CandleDataAggregationService {
 
         // Trade-related fields will be filled later
         data.setTrade(trade.getTradeType()); // Will be set during trade processing
+        data.setResilience(trade.getZone().getResilience());
+        data.setHalfLife(trade.getZone().getHalfLife());
         data.setEntryPrice(trade.getEntryPrice());
         data.setTimeToReturn(trade.getTimeToReturn());
         data.setTradeResult("NA");
@@ -107,11 +109,15 @@ public class CandleDataAggregationService {
             data.setDemandPrice(zone.getNearPoint());
             data.setDemandVolume(zone.getVolume());
             data.setDemandImpulseLength(zone.getStrength().longValue());
+            data.setZoneTaps(zone.getNoOfTaps());
+            if (zone.getRiskPerUnit() != null) data.setRiskPerUnit(zone.getRiskPerUnit());
         });
         supplyZone.ifPresent(zone -> {
             data.setSupplyPrice(zone.getNearPoint());
             data.setSupplyVolume(zone.getVolume());
             data.setSupplyImpulseLength(zone.getStrength().longValue());
+            data.setZoneTaps(zone.getNoOfTaps());
+            if (zone.getRiskPerUnit() != null) data.setRiskPerUnit(zone.getRiskPerUnit());
         });
     }
 
@@ -162,5 +168,7 @@ public class CandleDataAggregationService {
         data.setVolatility(marketIndicators.getVolatility());
         if (marketIndicators.getRsi14() != null) data.setRsi14(marketIndicators.getRsi14());
         data.setAverageVolume(marketIndicators.getAverageVolume());
+        if (marketIndicators.getAverageHalfLife() != null) data.setAverageHalfLife(marketIndicators.getAverageHalfLife());
+        if (marketIndicators.getAverageResilience() != null) data.setAverageResilience(marketIndicators.getAverageResilience());
     }
 }

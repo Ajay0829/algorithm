@@ -69,6 +69,12 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
                                                          @Param("currentTimestamp") LocalDateTime currentTimestamp,
                                                          @Param("oneMonthAgoTimestamp") LocalDateTime oneMonthAgoTimestamp);
 
+    @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe " +
+            "AND (z.halfLife IS NULL OR z.halfLife = -1 OR z.resilience IS NULL " +
+            "OR z.impulseExtending = true)")
+    List<Zone> findZonesWithMissingMetrics(@Param("stockSymbol") String stockSymbol,
+                                           @Param("timeframe") String timeframe);
+
 
     @Modifying
     @Transactional

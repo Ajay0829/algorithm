@@ -75,7 +75,11 @@ CREATE TABLE IF NOT EXISTS market_indicators (
     average_volatility DOUBLE PRECISION,
     average_volume DOUBLE PRECISION NOT NULL,
     rsi_14 DOUBLE PRECISION,
+    average_half_life DOUBLE PRECISION,
+    average_resilience DOUBLE PRECISION,
     no_of_samples INTEGER,
+    resilience_samples INTEGER,
+    half_life_samples INTEGER,
     UNIQUE (stock_symbol, timeframe)
 );
 
@@ -95,6 +99,10 @@ CREATE TABLE IF NOT EXISTS zones (
     volume DOUBLE PRECISION,
     strength DOUBLE PRECISION,
     no_of_taps INTEGER,
+    risk_per_unit DOUBLE PRECISION,
+    half_life INTEGER,
+    resilience DOUBLE PRECISION,
+    impulse_extending BOOLEAN,
     zone_type VARCHAR(16), -- SUPPLY, DEMAND (if you use this instead of type)
     identified_at TIMESTAMP,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, zone_type)
@@ -189,6 +197,12 @@ CREATE TABLE IF NOT EXISTS candle_aggregated_data (
     time_to_return INTEGER,
     supply_impulse_length INTEGER,
     demand_impulse_length INTEGER,
+    zone_taps INTEGER,
+    risk_per_unit DOUBLE PRECISION,
+    half_life INTEGER,
+    resilience DOUBLE PRECISION,
+    average_half_life DOUBLE PRECISION,
+    average_resilience DOUBLE PRECISION,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
     );

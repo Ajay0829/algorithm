@@ -101,6 +101,24 @@ public class CandleAggregatedDataEntity {
     @Column(name = "demand_impulse_length")
     private Long demandImpulseLength;
 
+    @Column(name = "zone_taps")
+    private Integer zoneTaps;
+
+    @Column(name = "risk_per_unit")
+    private Double riskPerUnit;
+
+    @Column(name = "half_life")
+    private Integer halfLife;
+
+    @Column(name = "resilience")
+    private Double resilience;
+
+    @Column(name = "average_half_life")
+    private Double averageHalfLife;
+
+    @Column(name = "average_resilience")
+    private Double averageResilience;
+
     public CandleAggregatedDataEntity() {}
 
     public Long getId() {
@@ -349,5 +367,53 @@ public class CandleAggregatedDataEntity {
 
     public void setDemandImpulseLength(Long demandImpulseLength) {
         this.demandImpulseLength = demandImpulseLength;
+    }
+
+    public Integer getZoneTaps() {
+        return zoneTaps;
+    }
+
+    public void setZoneTaps(Integer zoneTaps) {
+        this.zoneTaps = zoneTaps;
+    }
+
+    public Double getRiskPerUnit() {
+        return riskPerUnit;
+    }
+
+    public void setRiskPerUnit(Double riskPerUnit) {
+        this.riskPerUnit = riskPerUnit;
+    }
+
+    public Integer getHalfLife() {
+        return halfLife;
+    }
+
+    public void setHalfLife(Integer halfLife) {
+        this.halfLife = halfLife;
+    }
+
+    public Double getResilience() {
+        return resilience;
+    }
+
+    public void setResilience(Double resilience) {
+        this.resilience = resilience;
+    }
+
+    public Double getAverageHalfLife() {
+        return averageHalfLife;
+    }
+
+    public void setAverageHalfLife(Double averageHalfLife) {
+        this.averageHalfLife = averageHalfLife;
+    }
+
+    public Double getAverageResilience() {
+        return averageResilience;
+    }
+
+    public void setAverageResilience(Double averageResilience) {
+        this.averageResilience = averageResilience;
     }
 }

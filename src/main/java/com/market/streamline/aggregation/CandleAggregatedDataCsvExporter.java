@@ -58,7 +58,13 @@ public class CandleAggregatedDataCsvExporter {
                     "trade_result",
                     "time_to_return",
                     "demand_impulse_length",
-                    "supply_impulse_length"
+                    "supply_impulse_length",
+                    "zone_taps",
+                    "risk_per_unit",
+                    "half_life",
+                    "resilience",
+                    "average_half_life",
+                    "average_resilience"
                 };
                 writer.writeNext(header);
 
@@ -94,7 +100,13 @@ public class CandleAggregatedDataCsvExporter {
                         data.getTradeResult(),
                         String.valueOf(data.getTimeToReturn()),
                         String.valueOf(data.getDemandImpulseLength()),
-                        String.valueOf(data.getSupplyImpulseLength())
+                        String.valueOf(data.getSupplyImpulseLength()),
+                        String.valueOf(data.getZoneTaps()),
+                        String.valueOf(data.getRiskPerUnit()),
+                        String.valueOf(data.getHalfLife()),
+                        String.valueOf(data.getResilience()),
+                        String.valueOf(data.getAverageHalfLife()),
+                        String.valueOf(data.getAverageResilience())
                     };
                     writer.writeNext(row);
                 }

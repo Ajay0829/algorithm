@@ -43,10 +43,36 @@ public class Zone {
     @Column(name = "no_of_taps")
     private Integer noOfTaps;
 
+    @Column(name = "risk_per_unit")
+    private Double riskPerUnit;
+
+    @Column(name = "half_life")
+    private Integer halfLife;
+
+    @Column(name = "resilience")
+    private Double resilience;
+
+    @Column(name = "impulse_extending")
+    private Boolean impulseExtending;
+
     @Column(name = "identified_at")
     private LocalDateTime identifiedAt;
 
-    public Zone(String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType, Double nearPoint, Double farPoint, String type, Double volume, Double strength, Integer noOfTaps, LocalDateTime identifiedAt) {
+    public Zone(String stockSymbol,
+                String timeframe,
+                LocalDateTime candleTimestamp,
+                String zoneType,
+                Double nearPoint,
+                Double farPoint,
+                String type,
+                Double volume,
+                Double strength,
+                Integer noOfTaps,
+                LocalDateTime identifiedAt,
+                Double riskPerUnit,
+                Integer halfLife,
+                Double resilience,
+                Boolean impulseExtending) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
         this.candleTimestamp = candleTimestamp;
@@ -58,6 +84,10 @@ public class Zone {
         this.strength = strength;
         this.noOfTaps = noOfTaps;
         this.identifiedAt = identifiedAt;
+        this.riskPerUnit = riskPerUnit;
+        this.halfLife = halfLife;
+        this.resilience = resilience;
+        this.impulseExtending = impulseExtending;
     }
 
     public Zone() {
@@ -158,6 +188,38 @@ public class Zone {
 
     public void setIdentifiedAt(LocalDateTime identifiedAt) {
         this.identifiedAt = identifiedAt;
+    }
+
+    public Double getRiskPerUnit() {
+        return riskPerUnit;
+    }
+
+    public void setRiskPerUnit(Double riskPerUnit) {
+        this.riskPerUnit = riskPerUnit;
+    }
+
+    public Integer getHalfLife() {
+        return halfLife;
+    }
+
+    public void setHalfLife(Integer halfLife) {
+        this.halfLife = halfLife;
+    }
+
+    public Double getResilience() {
+        return resilience;
+    }
+
+    public void setResilience(Double resilience) {
+        this.resilience = resilience;
+    }
+
+    public Boolean getImpulseExtending() {
+        return impulseExtending;
+    }
+
+    public void setImpulseExtending(Boolean impulseExtending) {
+        this.impulseExtending = impulseExtending;
     }
 }
 

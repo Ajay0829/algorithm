@@ -23,8 +23,9 @@ public class TradeSimulationService {
     private final CandleRepository candleRepository;
     private final CandleDataAggregationService candleDataAggregationService;
     private final CandleAggregatedDataRepository candleAggregatedDataRepository;
+    private final ZoneMetricsService zoneMetricsService;
 
-    public TradeSimulationService(TradeRepository tradeRepository, ZoneRepository zoneRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, CandleRepository candleRepository, CandleDataAggregationService candleDataAggregationService, CandleAggregatedDataRepository candleAggregatedDataRepository) {
+    public TradeSimulationService(TradeRepository tradeRepository, ZoneRepository zoneRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, CandleRepository candleRepository, CandleDataAggregationService candleDataAggregationService, CandleAggregatedDataRepository candleAggregatedDataRepository, ZoneMetricsService zoneMetricsService) {
         this.tradeRepository = tradeRepository;
         this.zoneRepository = zoneRepository;
         this.chartAnnotationService = chartAnnotationService;
@@ -32,6 +33,7 @@ public class TradeSimulationService {
         this.candleRepository = candleRepository;
         this.candleDataAggregationService = candleDataAggregationService;
         this.candleAggregatedDataRepository = candleAggregatedDataRepository;
+        this.zoneMetricsService = zoneMetricsService;
     }
 
     public void processTrades(CandleEntity candleEntity, boolean isHighCheck) {
@@ -101,14 +103,14 @@ public class TradeSimulationService {
     // SL HIT Active True
     public void evaluateTrade(Trade trade, Zone zone, CandleEntity candleEntity, String result) {
         trade.setResult(result);
-        saveResultToCandleAggregatedData(trade, result);
-
         if (Objects.equals(result, "LOSS") || Objects.equals(result, "WIN")) {
             trade.setIsActive(false);
         }
         zone.setType(result.equals("WIN") ? "VALID" : "INVALID");
         zoneRepository.save(zone);
         tradeRepository.save(trade);
+
+        saveResultToCandleAggregatedData(trade, result);
 
         if (zone.getType().equals("INVALID")) {
             chartAnnotationService.processZone(zone, "deleted");
@@ -138,14 +140,20 @@ public class TradeSimulationService {
         double stopLossPrice, targetPrice, lossPoint;
         String zoneType = zone.getZoneType();
 
+        Double risk = zone.getRiskPerUnit();
+        if (risk == null) {
+            // Fallback to volatility based risk if not available
+            risk = entryPrice * volatilityValue / 100;
+        }
+
         if (zoneType.equals("DEMAND")) {
-            stopLossPrice = entryPrice - entryPrice * 1*volatilityValue/100;
-            lossPoint = stopLossPrice - entryPrice * 1.5*volatilityValue/100;
-            targetPrice = entryPrice + entryPrice * 2.5*volatilityValue/100;
+            stopLossPrice = entryPrice - risk;
+            lossPoint = entryPrice - 1.5 * risk;
+            targetPrice = entryPrice + 2.5 * risk;
         } else {
-            stopLossPrice = entryPrice + entryPrice * 1*volatilityValue/100;
-            lossPoint = entryPrice + entryPrice * 1.5*volatilityValue/100;
-            targetPrice = entryPrice - entryPrice * 2.5*volatilityValue/100;
+            stopLossPrice = entryPrice + risk;
+            lossPoint = entryPrice + 1.5 * risk;
+            targetPrice = entryPrice - 2.5 * risk;
         }
 
         long tradingHours = candleRepository.countByStockSymbolAndTimeframeAndCandleTimestampBetween(
@@ -170,7 +178,21 @@ public class TradeSimulationService {
 
         zone.setType("ACTIVE");
         zone.setNoOfTaps(zone.getNoOfTaps() + 1);
+        zone.setImpulseExtending(false);
+
+        long candlesSince = candleRepository.countCandlesBetweenTimestamps(
+                zone.getStockSymbol(),
+                zone.getTimeframe(),
+                zone.getIdentifiedAt(),
+                candleEntity.getCandleTimestamp());
+        if (zone.getHalfLife() == null || zone.getHalfLife() == -1) {
+            zone.setHalfLife((int) candlesSince);
+        }
+        if (zone.getResilience() == null || candlesSince < 14) {
+            zone.setResilience(1.0);
+        }
         zoneRepository.save(zone);
+        zoneMetricsService.updateAverages(zone);
         trade.setZone(zone);
         tradeRepository.save(trade);
 
