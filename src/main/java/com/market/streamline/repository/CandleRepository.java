@@ -63,6 +63,7 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
        @Param("endTimestamp") LocalDateTime endTimestamp
     );
 
+
     @Query("SELECT COUNT(c) FROM CandleEntity c WHERE c.stockSymbol = :stockSymbol AND c.timeframe = :timeframe AND c.candleTimestamp >= :startTimestamp AND c.candleTimestamp <= :endTimestamp")
     Long countCandlesBetweenTimestamps(
             @Param("stockSymbol") String stockSymbol,
@@ -77,6 +78,7 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
             @Param("timeframe") String timeframe,
             @Param("number") Long number
     );
+
 
     @Modifying
     @Transactional

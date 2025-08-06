@@ -24,8 +24,20 @@ public class MarketIndicators {
     @Column(name = "rsi_14")
     private Double rsi14;
 
+    @Column(name = "average_half_life")
+    private Double averageHalfLife;
+
+    @Column(name = "average_resilience")
+    private Double averageResilience;
+
     @Column(name = "no_of_samples")
     private int noOfSamples;
+
+    @Column(name = "resilience_samples")
+    private int resilienceSamples;
+
+    @Column(name = "half_life_samples")
+    private int halfLifeSamples;
 
     public MarketIndicators() {}
 
@@ -36,6 +48,8 @@ public class MarketIndicators {
         this.averageVolume = averageVolume;
         this.rsi14 = rsi14;
         this.noOfSamples = noOfSamples;
+        this.resilienceSamples = 0;
+        this.halfLifeSamples = 0;
     }
 
     public Long getId() { return id; }
@@ -55,6 +69,28 @@ public class MarketIndicators {
 
     public Double getRsi14() { return rsi14; }
     public void setRsi14(Double rsi14) { this.rsi14 = rsi14; }
+
+    public Double getAverageHalfLife() { return averageHalfLife; }
+    public void setAverageHalfLife(Double averageHalfLife) { this.averageHalfLife = averageHalfLife; }
+
+    public Double getAverageResilience() { return averageResilience; }
+    public void setAverageResilience(Double averageResilience) { this.averageResilience = averageResilience; }
+
+    public int getResilienceSamples() {
+        return resilienceSamples;
+    }
+
+    public void setResilienceSamples(int resilienceSamples) {
+        this.resilienceSamples = resilienceSamples;
+    }
+
+    public int getHalfLifeSamples() {
+        return halfLifeSamples;
+    }
+
+    public void setHalfLifeSamples(int halfLifeSamples) {
+        this.halfLifeSamples = halfLifeSamples;
+    }
 
     // Backward compatibility methods for existing code
     public Double getVolatility() { return averageVolatility; }
