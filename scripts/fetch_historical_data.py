@@ -6,9 +6,9 @@ import pandas as pd
 from kiteconnect import KiteConnect
 
 # ---------- CONFIG ----------
-API_KEY = "p7zekgkiwxciimkq"
-REQUEST_TOKEN = "uqKy47H3pMldVIWCD5juB2No1kzgcmFj"
-API_SECRET = "rom33v0c333akmo7pku2ph0yeck9b9fd"
+API_KEY = "XXX"
+REQUEST_TOKEN = "XXX"
+API_SECRET = "XXX"
 MAX_WORKERS = 6   # safe for 3 rps limit
 WINDOW_DAYS = 400 # Kite limit for hourly candles
 SAVE_DIR = "saved"

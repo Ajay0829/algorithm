@@ -5,9 +5,9 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import time
 
-API_KEY = "p7zekgkiwxciimkq"
-API_SECRET = "rom33v0c333akmo7pku2ph0yeck9b9fd"
-REQUEST_TOKEN = "W3XAYcwJry3eWEbU1qXlfteu9PtkfZ0e"
+API_KEY = "XXX"
+API_SECRET = "XXX"
+REQUEST_TOKEN = "XXX"
 
 # --------- CONFIG ----------
 # Use absolute dates if you prefer, e.g. "2015-01-01" to "2025-08-15"
