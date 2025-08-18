@@ -40,7 +40,7 @@ public class TradeDetectorService {
             return;
         }
 
-        double volatilityValue = marketIndicators.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility200();
 
         double currentPrice = isHighCheck ? candleEntity.getHigh() : candleEntity.getLow();
 

@@ -1,7 +1,6 @@
 package com.market.streamline.service;
 
 import com.market.streamline.entity.structure.*;
-import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.BreakOfStructureRepository;
 import com.market.streamline.repository.MarketIndicatorsRepository;
 import com.market.streamline.repository.SwingPointRepository;
@@ -17,14 +16,12 @@ public class BreakOfStructureService {
     private final SwingPointRepository swingPointRepository;
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
-    private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public BreakOfStructureService(SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
+    public BreakOfStructureService(SwingPointRepository swingPointRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.swingPointRepository = swingPointRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
-        this.chartAnnotationService = chartAnnotationService;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
@@ -35,7 +32,7 @@ public class BreakOfStructureService {
             return;
         }
         boolean breakOfStructure = false;
-        double volatilityValue = marketIndicators.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility200();
 
         List<SwingPoint> swingPoints = swingPointRepository.findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDescIdDesc(candleEntity.getStockSymbol(), candleEntity.getTimeframe())
                 .stream().sorted(Comparator.comparing(SwingPoint::getCandleTimestamp)
@@ -62,7 +59,6 @@ public class BreakOfStructureService {
             SwingPoint strongSwingPoint = swingPoints.get(1);
             strongSwingPoint.setIsMajor(true);
             swingPointRepository.save(strongSwingPoint);
-            chartAnnotationService.processSwingPoint(strongSwingPoint, "updated");
             BreakOfStructure bos = new BreakOfStructure(
                     candleEntity.getStockSymbol(),
                     candleEntity.getTimeframe(),
@@ -74,7 +70,6 @@ public class BreakOfStructureService {
                     candleEntity.getVolume()
             );
             breakOfStructureRepository.save(bos);
-            chartAnnotationService.processBreakOfStructure(bos, "created");
         }
     }
 

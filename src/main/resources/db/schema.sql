@@ -72,14 +72,15 @@ CREATE TABLE IF NOT EXISTS market_indicators (
     id SERIAL PRIMARY KEY,
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
-    average_volatility DOUBLE PRECISION,
-    average_volume DOUBLE PRECISION NOT NULL,
+    volatility14 DOUBLE PRECISION,
+    volatility50 DOUBLE PRECISION,
+    volatility200 DOUBLE PRECISION,
+    volume14 DOUBLE PRECISION,
+    volume50 DOUBLE PRECISION,
+    volume200 DOUBLE PRECISION,
     rsi_14 DOUBLE PRECISION,
-    average_half_life DOUBLE PRECISION,
-    average_resilience DOUBLE PRECISION,
+    rsi_50 DOUBLE PRECISION,
     no_of_samples INTEGER,
-    resilience_samples INTEGER,
-    half_life_samples INTEGER,
     UNIQUE (stock_symbol, timeframe)
 );
 
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS zones (
     stock_symbol VARCHAR(16) NOT NULL,
     timeframe VARCHAR(16) NOT NULL,
     candle_timestamp TIMESTAMP NOT NULL,
+    zone_type VARCHAR(16), -- SUPPLY, DEMAND
     near_point DOUBLE PRECISION,
     far_point DOUBLE PRECISION,
     type VARCHAR(16),
@@ -102,8 +104,8 @@ CREATE TABLE IF NOT EXISTS zones (
     risk_per_unit DOUBLE PRECISION,
     half_life INTEGER,
     resilience DOUBLE PRECISION,
+    same_direction_move DOUBLE PRECISION,
     impulse_extending BOOLEAN,
-    zone_type VARCHAR(16), -- SUPPLY, DEMAND (if you use this instead of type)
     identified_at TIMESTAMP,
     UNIQUE (stock_symbol, timeframe, candle_timestamp, zone_type)
 );
@@ -170,41 +172,44 @@ CREATE TABLE IF NOT EXISTS candle_aggregated_data (
     stock_symbol VARCHAR(255),
     timeframe VARCHAR(255),
     candle_timestamp TIMESTAMP,
-    open_price DOUBLE PRECISION,
-    close_price DOUBLE PRECISION,
-    high_price DOUBLE PRECISION,
-    low_price DOUBLE PRECISION,
-    volume DOUBLE PRECISION,
-    last_swing_high DOUBLE PRECISION,
-    last_swing_low DOUBLE PRECISION,
-    last_liquidity_sweep_type VARCHAR(255),
-    supply_price DOUBLE PRECISION,
-    supply_volume DOUBLE PRECISION,
-    demand_price DOUBLE PRECISION,
-    demand_volume DOUBLE PRECISION,
+
+    -- Zone context (same & opposing)
+    same_zone_strength DOUBLE PRECISION,
+    same_zone_volume DOUBLE PRECISION,
+    opposing_zone_distance DOUBLE PRECISION,
+    opposing_zone_volume DOUBLE PRECISION,
+    opposing_zone_strength DOUBLE PRECISION,
+
+    -- Liquidity / BOS
+    liquidity_sweep_direction VARCHAR(255),
+    same_liquidity_distance DOUBLE PRECISION,
+    opposing_liquidity_distance DOUBLE PRECISION,
     bos_direction VARCHAR(255),
     bos_volume DOUBLE PRECISION,
-    buy_liquidity DOUBLE PRECISION,
-    buy_liquidity_strength INTEGER,
-    sell_liquidity DOUBLE PRECISION,
-    sell_liquidity_strength INTEGER,
-    volatility DOUBLE PRECISION,
-    average_volume DOUBLE PRECISION,
+
+    -- Indicators
+    volatility14 DOUBLE PRECISION,
+    volatility50 DOUBLE PRECISION,
+    volatility200 DOUBLE PRECISION,
+    volume14 DOUBLE PRECISION,
+    volume50 DOUBLE PRECISION,
+    volume200 DOUBLE PRECISION,
     rsi_14 DOUBLE PRECISION,
+    rsi_50 DOUBLE PRECISION,
+
+    -- Trade context & zone metrics
     trade VARCHAR(255),
     entry_price DOUBLE PRECISION,
-    trade_result VARCHAR(255),
-    time_to_return INTEGER,
-    supply_impulse_length INTEGER,
-    demand_impulse_length INTEGER,
-    zone_taps INTEGER,
-    risk_per_unit DOUBLE PRECISION,
-    half_life INTEGER,
     resilience DOUBLE PRECISION,
-    average_half_life DOUBLE PRECISION,
-    average_resilience DOUBLE PRECISION,
+    half_life INTEGER,
+    time_to_return BIGINT,             -- Long in entity
+    same_direction_max_move DOUBLE PRECISION,
+    zone_taps INTEGER,
+    trade_result VARCHAR(255),
+
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
-    );
+);
+
 CREATE INDEX IF NOT EXISTS idx_candle_aggregated_data_symbol_timeframe_ts
     ON candle_aggregated_data (stock_symbol, timeframe, candle_timestamp);

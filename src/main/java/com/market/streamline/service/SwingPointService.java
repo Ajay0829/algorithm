@@ -1,7 +1,6 @@
 package com.market.streamline.service;
 
 import com.market.streamline.entity.structure.*;
-import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -19,16 +18,14 @@ public class SwingPointService {
     private final CandleRepository candleRepository;
     private final BreakOfStructureRepository breakOfStructureRepository;
     private final Environment env;
-    private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
     private final LiquidityService liquidityService;
 
-    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, LiquidityService liquidityService) {
+    public SwingPointService(SwingPointRepository swingPointRepository, CandleRepository candleRepository, BreakOfStructureRepository breakOfStructureRepository, Environment env, MarketIndicatorsRepository marketIndicatorsRepository, LiquidityService liquidityService) {
         this.swingPointRepository = swingPointRepository;
         this.candleRepository = candleRepository;
         this.breakOfStructureRepository = breakOfStructureRepository;
         this.env = env;
-        this.chartAnnotationService = chartAnnotationService;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
         this.liquidityService = liquidityService;
     }
@@ -40,7 +37,7 @@ public class SwingPointService {
             return;
         }
 
-        double volatilityValue = marketIndicators.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility200();
 
         Optional<SwingPoint> recentSwingPoint = swingPointRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDescIdDesc(
                 candleEntity.getStockSymbol(), candleEntity.getTimeframe()
@@ -80,7 +77,7 @@ public class SwingPointService {
             // No volatility data available, cannot confirm swing point
             return Optional.empty();
         }
-        double volatilityValue = marketIndicators.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility200();
 
         // Fetch 2*N CandleEntity candles before this timestamp for the timeframe and stock
         List<CandleEntity> candleEntities = candleRepository.findRecentCandles(
@@ -148,7 +145,6 @@ public class SwingPointService {
                     return Optional.of(recent);
                 } else {
                     swingPointRepository.delete(recent);
-                    chartAnnotationService.processSwingPoint(recent, "deleted");
                     swingPointRepository.save(sp);
                     handleSwingPointEvent(sp);
                     return Optional.of(sp);
@@ -168,7 +164,6 @@ public class SwingPointService {
                     return Optional.of(recent);
                 } else {
                     swingPointRepository.delete(recent);
-                    chartAnnotationService.processSwingPoint(recent, "deleted");
                     swingPointRepository.save(sp);
                     handleSwingPointEvent(sp);
                     return Optional.of(sp);
@@ -256,8 +251,6 @@ public class SwingPointService {
         if (swingPoint.getConfirmed()) {
             liquidityService.checkLiquiditySweep(swingPoint);
         }
-
-        chartAnnotationService.processSwingPoint(swingPoint, "created");
     }
 
     private boolean isInflectionPoint(CandleEntity current, CandleEntity reference, boolean direction) {

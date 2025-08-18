@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 import static java.lang.Math.*;
 
@@ -18,8 +17,11 @@ public class MarketIndicatorsCalculationService {
 
     private final MarketIndicatorsRepository marketIndicatorsRepository;
     private final CandleRepository candleRepository;
-    private static final int RSI_PERIOD = 14;
-    private static final int MOVING_AVERAGE_WINDOW = 200;
+    private static final int RSI_14 = 14;
+    private static final int RSI_50 = 50;
+    private static final int WINDOW_200 = 200;
+    private static final int WINDOW_50 = 50;
+    private static final int WINDOW_14 = 14;
 
     public MarketIndicatorsCalculationService(MarketIndicatorsRepository marketIndicatorsRepository, CandleRepository candleRepository) {
         this.marketIndicatorsRepository = marketIndicatorsRepository;
@@ -41,48 +43,73 @@ public class MarketIndicatorsCalculationService {
                     stockSymbol,
                     timeframe,
                     initialVolatility,
+                    initialVolatility,
+                    initialVolatility,
                     candleEntity.getVolume(),
-                    null, // RSI will be calculated below
+                    candleEntity.getVolume(),
+                    candleEntity.getVolume(),
+                    null,
+                    null,
                     1
             );
         } else {
             // Update average volatility
-            double currentVolatility = marketIndicators.getAverageVolatility();
+            double currentVolatility14 = marketIndicators.getVolatility14();
+            double currentVolatility50 = marketIndicators.getVolatility50();
+            double currentVolatility200 = marketIndicators.getVolatility200();
             CandleEntity previousCandle = candleRepository.findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanOrderByCandleTimestampDesc(
                     candleEntity.getStockSymbol(), candleEntity.getTimeframe(), candleEntity.getCandleTimestamp()
             );
             double previousClose = previousCandle.getClose();
             double atr = getATR(previousClose, candleEntity) * 100;
+            double volume = candleEntity.getVolume();
+
+            double currentVolume14 = marketIndicators.getVolume14();
+            double currentVolume50 = marketIndicators.getVolume50();
+            double currentVolume200 = marketIndicators.getVolume200();
 
             int totalSamples = marketIndicators.getNoOfSamples();
-            double finalVolatility = (currentVolatility * totalSamples + atr) / (totalSamples + 1);
-            marketIndicators.setAverageVolatility(finalVolatility);
+            double finalVolatility200, finalVolatility50, finalVolatility14, finalVolume200, finalVolume50, finalVolume14;
 
-            // Update average volume
-            if (marketIndicators.getAverageVolume() != null) {
-                double currentAvgVolume = marketIndicators.getAverageVolume();
-                double finalAvgVolume = (currentAvgVolume * totalSamples + candleEntity.getVolume()) / (totalSamples + 1);
-                marketIndicators.setAverageVolume(finalAvgVolume);
-            } else {
-                marketIndicators.setAverageVolume(candleEntity.getVolume());
-            }
+            finalVolatility14 = computeAverageMetric(currentVolatility14, atr, totalSamples, WINDOW_14);
+            finalVolatility50 = computeAverageMetric(currentVolatility50, atr, totalSamples, WINDOW_50);
+            finalVolatility200 = computeAverageMetric(currentVolatility200, atr, totalSamples, WINDOW_200);
+            finalVolume14 = computeAverageMetric(currentVolume14, volume, totalSamples, WINDOW_14);
+            finalVolume50 = computeAverageMetric(currentVolume50, volume, totalSamples, WINDOW_50);
+            finalVolume200 = computeAverageMetric(currentVolume200, volume, totalSamples, WINDOW_200);
 
-            marketIndicators.setNoOfSamples(min(totalSamples + 1, MOVING_AVERAGE_WINDOW - 1));
+            marketIndicators.setVolatility14(finalVolatility14);
+            marketIndicators.setVolatility50(finalVolatility50);
+            marketIndicators.setVolatility200(finalVolatility200);
+            marketIndicators.setVolume14(finalVolume14);
+            marketIndicators.setVolume50(finalVolume50);
+            marketIndicators.setVolume200(finalVolume200);
+
+            marketIndicators.setNoOfSamples(totalSamples + 1);
         }
 
         // Calculate and update RSI
-        Double rsi = calculateRSI(stockSymbol, timeframe, candleEntity);
-        if (rsi != null) {
-            marketIndicators.setRsi14(rsi);
+        Double rsi14 = calculateRSI(stockSymbol, timeframe, candleEntity, RSI_14);
+        Double rsi50 = calculateRSI(stockSymbol, timeframe, candleEntity, RSI_50);
+        if (rsi14 != null) {
+            marketIndicators.setRsi14(rsi14);
+        }
+        if (rsi50 != null) {
+            marketIndicators.setRsi50(rsi50);
         }
 
         marketIndicatorsRepository.save(marketIndicators);
     }
 
+    double computeAverageMetric(double oldValue, double currentValue, int noOfSamples, int window) {
+        int sampleSize = min(window, noOfSamples);
+        return ( oldValue * (sampleSize - 1) + currentValue ) / sampleSize;
+    }
+
     double getATR(double previousClose, CandleEntity candleEntity) {
         double volatility = max(abs(candleEntity.getHigh() - candleEntity.getLow()), abs(candleEntity.getHigh() - previousClose));
         volatility = max(volatility, abs(candleEntity.getLow() - previousClose));
-        volatility /= candleEntity.getClose();
+        volatility /= previousClose;
 
         return volatility;
     }
@@ -90,7 +117,7 @@ public class MarketIndicatorsCalculationService {
     /**
      * Calculate RSI (Relative Strength Index) using Wilder's smoothing method (standard in trading platforms)
      */
-    private Double calculateRSI(String stockSymbol, String timeframe, CandleEntity currentCandle) {
+    private Double calculateRSI(String stockSymbol, String timeframe, CandleEntity currentCandle, Integer RSI_PERIOD) {
         // Get more historical data for proper RSI calculation
         // We need at least RSI_PERIOD * 2 candles for accurate smoothing
         List<CandleEntity> recentCandles = candleRepository.findRecentCandles(
