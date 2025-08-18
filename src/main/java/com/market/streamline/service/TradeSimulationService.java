@@ -6,7 +6,6 @@ import com.market.streamline.entity.structure.CandleEntity;
 import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.trade.Trade;
 import com.market.streamline.entity.zone.Zone;
-import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.*;
 import org.springframework.stereotype.Service;
 
@@ -18,17 +17,15 @@ public class TradeSimulationService {
 
     private final TradeRepository tradeRepository;
     private final ZoneRepository zoneRepository;
-    private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
     private final CandleRepository candleRepository;
     private final CandleDataAggregationService candleDataAggregationService;
     private final CandleAggregatedDataRepository candleAggregatedDataRepository;
     private final ZoneMetricsService zoneMetricsService;
 
-    public TradeSimulationService(TradeRepository tradeRepository, ZoneRepository zoneRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository, CandleRepository candleRepository, CandleDataAggregationService candleDataAggregationService, CandleAggregatedDataRepository candleAggregatedDataRepository, ZoneMetricsService zoneMetricsService) {
+    public TradeSimulationService(TradeRepository tradeRepository, ZoneRepository zoneRepository, MarketIndicatorsRepository marketIndicatorsRepository, CandleRepository candleRepository, CandleDataAggregationService candleDataAggregationService, CandleAggregatedDataRepository candleAggregatedDataRepository, ZoneMetricsService zoneMetricsService) {
         this.tradeRepository = tradeRepository;
         this.zoneRepository = zoneRepository;
-        this.chartAnnotationService = chartAnnotationService;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
         this.candleRepository = candleRepository;
         this.candleDataAggregationService = candleDataAggregationService;
@@ -111,11 +108,6 @@ public class TradeSimulationService {
         tradeRepository.save(trade);
 
         saveResultToCandleAggregatedData(trade, result);
-
-        if (zone.getType().equals("INVALID")) {
-            chartAnnotationService.processZone(zone, "deleted");
-        }
-        chartAnnotationService.processTrade(trade, candleEntity, "updated");
     }
 
     public void saveResultToCandleAggregatedData(Trade trade, String result) {
@@ -136,7 +128,7 @@ public class TradeSimulationService {
             return;
         }
 
-        double volatilityValue = marketIndicators.getVolatility();
+        double volatilityValue = marketIndicators.getVolatility200();
         double stopLossPrice, targetPrice, lossPoint;
         String zoneType = zone.getZoneType();
 
@@ -178,25 +170,13 @@ public class TradeSimulationService {
 
         zone.setType("ACTIVE");
         zone.setNoOfTaps(zone.getNoOfTaps() + 1);
-        zone.setImpulseExtending(false);
-
-        long candlesSince = candleRepository.countCandlesBetweenTimestamps(
-                zone.getStockSymbol(),
-                zone.getTimeframe(),
-                zone.getIdentifiedAt(),
-                candleEntity.getCandleTimestamp());
-        if (zone.getHalfLife() == null || zone.getHalfLife() == -1) {
-            zone.setHalfLife((int) candlesSince);
-        }
-        if (zone.getResilience() == null || candlesSince < 14) {
-            zone.setResilience(1.0);
-        }
         zoneRepository.save(zone);
-        zoneMetricsService.updateAverages(zone);
+        if (zone.getImpulseExtending() == true) {
+            zoneMetricsService.updateZoneMetricsWithProvisionalTouch(zone, candleEntity, entryPrice);
+        }
         trade.setZone(zone);
         tradeRepository.save(trade);
 
         candleDataAggregationService.saveAggregatedData(candleEntity, trade);
-        chartAnnotationService.processTrade(trade, candleEntity, "executed");
     }
 }

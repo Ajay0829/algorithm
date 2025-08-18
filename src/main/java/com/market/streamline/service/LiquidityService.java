@@ -5,13 +5,11 @@ import com.market.streamline.entity.liquidity.LiquiditySweep;
 import com.market.streamline.entity.structure.CandleEntity;
 import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.structure.SwingPoint;
-import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.LiquidityRepository;
 import com.market.streamline.repository.LiquiditySweepRepository;
 import com.market.streamline.repository.MarketIndicatorsRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -21,13 +19,11 @@ public class LiquidityService {
 
     private final LiquiditySweepRepository liquiditySweepRepository;
     private final LiquidityRepository liquidityRepository;
-    private final ChartAnnotationService chartAnnotationService;
     private final MarketIndicatorsRepository marketIndicatorsRepository;
 
-    public LiquidityService(LiquiditySweepRepository liquiditySweepRepository, LiquidityRepository liquidityRepository, ChartAnnotationService chartAnnotationService, MarketIndicatorsRepository marketIndicatorsRepository) {
+    public LiquidityService(LiquiditySweepRepository liquiditySweepRepository, LiquidityRepository liquidityRepository, MarketIndicatorsRepository marketIndicatorsRepository) {
         this.liquiditySweepRepository = liquiditySweepRepository;
         this.liquidityRepository = liquidityRepository;
-        this.chartAnnotationService = chartAnnotationService;
         this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
@@ -52,13 +48,10 @@ public class LiquidityService {
                     swingPoint.getTimeframe(),
                     swingPoint.getCandleTimestamp(),
                     getSweepType(swingPoint),
-                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility()),
+                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility200()),
                     1
             );
             liquidityRepository.save(liquidity);
-
-            // Send chart annotation for new liquidity zone
-            sendLiquidityChartEvent(liquidity, "created");
             return;
         }
 
@@ -71,7 +64,7 @@ public class LiquidityService {
                     swingPoint.getCandleTimestamp(),
                     getSweepType(swingPoint),
                     0.0,
-                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility()),
+                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility200()),
                     liquidity.getStrength()
             );
             if (!liquiditySweepRepository.existsByStockSymbolAndTimeframeAndCandleTimestamp(swingPoint.getStockSymbol(), swingPoint.getTimeframe(), swingPoint.getCandleTimestamp())) {
@@ -79,8 +72,6 @@ public class LiquidityService {
             } else {
                 return;
             }
-            // Send chart annotation for liquidity deletion (swept)
-            sendLiquidityChartEvent(liquidity, "swept");
             liquidityRepository.delete(liquidity);
         } else {
             handleAddOrUpdateLiquidityZone(swingPoint, liquidity, marketIndicators);
@@ -96,21 +87,15 @@ public class LiquidityService {
                     swingPoint.getTimeframe(),
                     swingPoint.getCandleTimestamp(),
                     getSweepType(swingPoint),
-                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility()),
+                    getLiquidityPrice(swingPoint, marketIndicators.getVolatility200()),
                     1
             );
             liquidityRepository.save(liquidityZone);
-
-            // Send chart annotation for new liquidity zone
-            sendLiquidityChartEvent(liquidityZone, "created");
         } else {
             // No Tap but price is nearby the old liquidity zone
             // increase the strength of the last liquidity zone
             liquidity.setStrength(liquidity.getStrength() + 1);
             liquidityRepository.save(liquidity);
-
-            // Send chart annotation for updated liquidity zone
-            sendLiquidityChartEvent(liquidity, "updated");
         }
     }
 
@@ -138,7 +123,7 @@ public class LiquidityService {
     private boolean shouldAddNewLiquidityZone(SwingPoint swingPoint, Liquidity liquidity, MarketIndicators marketIndicators) {
         double distance = Math.abs(swingPoint.getPrice() - liquidity.getPrice());
         double percentageDistance = (distance / liquidity.getPrice()) * 100;
-        return percentageDistance > 2 * marketIndicators.getVolatility();
+        return percentageDistance > 2 * marketIndicators.getVolatility200();
     }
 
     public void invalidateLiquidityZones(CandleEntity candleEntity, boolean isHighCheck) {
@@ -160,15 +145,13 @@ public class LiquidityService {
         liquidities.forEach(liquidity -> {
             double liquidityPrice = liquidity.getPrice();
             if (liquidity.getLiquidityType().equals("SELL_SWEEP")) {
-                if (currentPrice > liquidityPrice* (1 + marketIndicators.getVolatility() / 100)) {
+                if (currentPrice > liquidityPrice* (1 + marketIndicators.getVolatility200() / 100)) {
                     // Send chart annotation for liquidity deletion before deleting
-                    sendLiquidityChartEvent(liquidity, "deleted");
                     liquidityRepository.delete(liquidity);
                 }
             } else {
-                if (currentPrice < liquidityPrice * (1 - marketIndicators.getVolatility() / 100)) {
+                if (currentPrice < liquidityPrice * (1 - marketIndicators.getVolatility200() / 100)) {
                     // Send chart annotation for liquidity deletion before deleting
-                    sendLiquidityChartEvent(liquidity, "deleted");
                     liquidityRepository.delete(liquidity);
                 }
             }
@@ -191,12 +174,5 @@ public class LiquidityService {
             );
 
         return Stream.concat(sellLiquidities.stream(), buyLiquidities.stream()).toList();
-    }
-
-    /**
-     * Send chart annotation event for liquidity zone changes
-     */
-    private void sendLiquidityChartEvent(Liquidity liquidity, String action) {
-        chartAnnotationService.processLiquidity(liquidity, action);
     }
 }

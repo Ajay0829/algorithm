@@ -20,41 +20,29 @@ public class CandleAggregatedDataEntity {
     @Column(name = "candle_timestamp")
     private LocalDateTime candleTimestamp;
 
-    @Column(name = "open_price")
-    private Double open;
+    @Column(name = "opposing_zone_distance")
+    private double opposingZoneDistance;
 
-    @Column(name = "close_price")
-    private Double close;
+    @Column(name = "opposing_zone_strength")
+    private double opposingZoneStrength;
 
-    @Column(name = "high_price")
-    private Double high;
+    @Column(name = "opposing_zone_volume")
+    private double opposingZoneVolume;
 
-    @Column(name = "low_price")
-    private Double low;
+    @Column(name = "same_zone_strength")
+    private double sameZoneStrength;
 
-    @Column(name = "volume")
-    private Double volume;
+    @Column(name = "same_zone_volume")
+    private double sameZoneVolume;
 
-    @Column(name = "last_swing_high")
-    private double lastSwingHigh;
+    @Column(name = "liquidity_sweep_direction")
+    private String liquiditySweepDirection;
 
-    @Column(name = "last_swing_low")
-    private double lastSwingLow;
+    @Column(name = "same_liquidity_distance")
+    private Double sameLiquidityDistance;
 
-    @Column(name = "supply_price")
-    private double supplyPrice;
-
-    @Column(name = "supply_volume")
-    private double supplyVolume;
-
-    @Column(name = "demand_price")
-    private double demandPrice;
-
-    @Column(name = "demand_volume")
-    private double demandVolume;
-
-    @Column(name = "last_liquidity_sweep_type")
-    private String lastLiquiditySweepType;
+    @Column(name = "opposing_liquidity_distance")
+    private Double opposingLiquidityDistance;
 
     @Column(name = "bos_direction")
     private String bosDirection;
@@ -62,50 +50,17 @@ public class CandleAggregatedDataEntity {
     @Column(name = "bos_volume")
     private double bosVolume;
 
-    @Column(name = "buy_liquidity")
-    private double buyLiquidity;
-
-    @Column(name = "buy_liquidity_strength")
-    private int buyLiquidityStrength;
-
-    @Column(name = "sell_liquidity")
-    private double sellLiquidity;
-
-    @Column(name = "sell_liquidity_strength")
-    private int sellLiquidityStrength;
-
-    @Column(name = "volatility")
-    private double volatility;
-
-    @Column(name = "average_volume")
-    private  double averageVolume;
-
-    @Column(name = "rsi_14")
-    private  double rsi14;
-
     @Column(name = "trade")
     private String trade;
-
-    @Column(name = "entry_price")
-    private double entryPrice;
-
-    @Column(name = "trade_result")
-    private String tradeResult;
 
     @Column(name = "time_to_return")
     private Long timeToReturn;
 
-    @Column(name = "supply_impulse_length")
-    private Long supplyImpulseLength;
-
-    @Column(name = "demand_impulse_length")
-    private Long demandImpulseLength;
-
     @Column(name = "zone_taps")
     private Integer zoneTaps;
 
-    @Column(name = "risk_per_unit")
-    private Double riskPerUnit;
+    @Column(name = "trade_result")
+    private String tradeResult;
 
     @Column(name = "half_life")
     private Integer halfLife;
@@ -113,11 +68,35 @@ public class CandleAggregatedDataEntity {
     @Column(name = "resilience")
     private Double resilience;
 
-    @Column(name = "average_half_life")
-    private Double averageHalfLife;
+    @Column(name = "volatility14")
+    private double volatility14;
 
-    @Column(name = "average_resilience")
-    private Double averageResilience;
+    @Column(name = "volatility50")
+    private double volatility50;
+
+    @Column(name = "volatility200")
+    private double volatility200;
+
+    @Column(name = "volume14")
+    private double volume14;
+
+    @Column(name = "volume50")
+    private double volume50;
+
+    @Column(name = "volume200")
+    private double volume200;
+
+    @Column(name = "rsi_14")
+    private double rsi14;
+
+    @Column(name = "rsi_50")
+    private double rsi50;
+
+    @Column(name = "same_direction_max_move")
+    private double sameDirectionMaxMove;
+
+    @Column(name = "entry_price")
+    private double entryPrice;
 
     public CandleAggregatedDataEntity() {}
 
@@ -153,100 +132,68 @@ public class CandleAggregatedDataEntity {
         this.candleTimestamp = candleTimestamp;
     }
 
-    public Double getOpen() {
-        return open;
+    public double getOpposingZoneDistance() {
+        return opposingZoneDistance;
     }
 
-    public void setOpen(Double open) {
-        this.open = open;
+    public void setOpposingZoneDistance(double opposingZoneDistance) {
+        this.opposingZoneDistance = opposingZoneDistance;
     }
 
-    public Double getClose() {
-        return close;
+    public double getOpposingZoneStrength() {
+        return opposingZoneStrength;
     }
 
-    public void setClose(Double close) {
-        this.close = close;
+    public void setOpposingZoneStrength(double opposingZoneStrength) {
+        this.opposingZoneStrength = opposingZoneStrength;
     }
 
-    public Double getHigh() {
-        return high;
+    public double getOpposingZoneVolume() {
+        return opposingZoneVolume;
     }
 
-    public void setHigh(Double high) {
-        this.high = high;
+    public void setOpposingZoneVolume(double opposingZoneVolume) {
+        this.opposingZoneVolume = opposingZoneVolume;
     }
 
-    public Double getLow() {
-        return low;
+    public double getSameZoneStrength() {
+        return sameZoneStrength;
     }
 
-    public void setLow(Double low) {
-        this.low = low;
+    public void setSameZoneStrength(double sameZoneStrength) {
+        this.sameZoneStrength = sameZoneStrength;
     }
 
-    public Double getVolume() {
-        return volume;
+    public double getSameZoneVolume() {
+        return sameZoneVolume;
     }
 
-    public void setVolume(Double volume) {
-        this.volume = volume;
+    public void setSameZoneVolume(double sameZoneVolume) {
+        this.sameZoneVolume = sameZoneVolume;
     }
 
-    public double getLastSwingHigh() {
-        return lastSwingHigh;
+    public String getLiquiditySweepDirection() {
+        return liquiditySweepDirection;
     }
 
-    public void setLastSwingHigh(double lastSwingHigh) {
-        this.lastSwingHigh = lastSwingHigh;
+    public void setLiquiditySweepDirection(String liquiditySweepDirection) {
+        this.liquiditySweepDirection = liquiditySweepDirection;
     }
 
-    public double getLastSwingLow() {
-        return lastSwingLow;
+    public Double getSameLiquidityDistance() {
+        return sameLiquidityDistance;
     }
 
-    public void setLastSwingLow(double lastSwingLow) {
-        this.lastSwingLow = lastSwingLow;
+    public void setSameLiquidityDistance(Double sameLiquidityDistance) {
+        this.sameLiquidityDistance = sameLiquidityDistance;
     }
 
-    public double getSupplyPrice() {
-        return supplyPrice;
+    public Double getOpposingLiquidityDistance() {
+        return opposingLiquidityDistance;
     }
 
-    public void setSupplyPrice(double supplyPrice) {
-        this.supplyPrice = supplyPrice;
-    }
-
-    public double getSupplyVolume() {
-        return supplyVolume;
-    }
-
-    public void setSupplyVolume(double supplyVolume) {
-        this.supplyVolume = supplyVolume;
-    }
-
-    public double getDemandPrice() {
-        return demandPrice;
-    }
-
-    public void setDemandPrice(double demandPrice) {
-        this.demandPrice = demandPrice;
-    }
-
-    public double getDemandVolume() {
-        return demandVolume;
-    }
-
-    public void setDemandVolume(double demandVolume) {
-        this.demandVolume = demandVolume;
-    }
-
-    public String getLastLiquiditySweepType() {
-        return lastLiquiditySweepType;
-    }
-
-    public void setLastLiquiditySweepType(String lastLiquiditySweepType) {
-        this.lastLiquiditySweepType = lastLiquiditySweepType;
+    public void setOpposingLiquidityDistance(Double opposingLiquidityDistance) {
+        this.opposingLiquidityDistance = opposingLiquidityDistance;
     }
 
     public String getBosDirection() {
@@ -265,78 +212,6 @@ public class CandleAggregatedDataEntity {
         this.bosVolume = bosVolume;
     }
 
-    public double getBuyLiquidity() {
-        return buyLiquidity;
-    }
-
-    public void setBuyLiquidity(double buyLiquidity) {
-        this.buyLiquidity = buyLiquidity;
-    }
-
-    public int getBuyLiquidityStrength() {
-        return buyLiquidityStrength;
-    }
-
-    public void setBuyLiquidityStrength(int buyLiquidityStrength) {
-        this.buyLiquidityStrength = buyLiquidityStrength;
-    }
-
-    public double getSellLiquidity() {
-        return sellLiquidity;
-    }
-
-    public void setSellLiquidity(double sellLiquidity) {
-        this.sellLiquidity = sellLiquidity;
-    }
-
-    public int getSellLiquidityStrength() {
-        return sellLiquidityStrength;
-    }
-
-    public void setSellLiquidityStrength(int sellLiquidityStrength) {
-        this.sellLiquidityStrength = sellLiquidityStrength;
-    }
-
-    public double getVolatility() {
-        return volatility;
-    }
-
-    public void setVolatility(double volatility) {
-        this.volatility = volatility;
-    }
-
-    public double getAverageVolume() {
-        return averageVolume;
-    }
-
-    public void setAverageVolume(double averageVolume) {
-        this.averageVolume = averageVolume;
-    }
-
-    public double getRsi14() {
-        return rsi14;
-    }
-
-    public void setRsi14(double rsi14) {
-        this.rsi14 = rsi14;
-    }
-
-    public String getTrade() {
-        return trade;
-    }
-
-    public void setTrade(String trade) {
-        this.trade = trade;
-    }
-
-    public double getEntryPrice() {
-        return entryPrice;
-    }
-
-    public void setEntryPrice(double entryPrice) {
-        this.entryPrice = entryPrice;
-    }
-
     public String getTradeResult() {
         return tradeResult;
     }
@@ -353,36 +228,12 @@ public class CandleAggregatedDataEntity {
         this.timeToReturn = timeToReturn;
     }
 
-    public Long getSupplyImpulseLength() {
-        return supplyImpulseLength;
-    }
-
-    public void setSupplyImpulseLength(Long supplyImpulseLength) {
-        this.supplyImpulseLength = supplyImpulseLength;
-    }
-
-    public Long getDemandImpulseLength() {
-        return demandImpulseLength;
-    }
-
-    public void setDemandImpulseLength(Long demandImpulseLength) {
-        this.demandImpulseLength = demandImpulseLength;
-    }
-
     public Integer getZoneTaps() {
         return zoneTaps;
     }
 
     public void setZoneTaps(Integer zoneTaps) {
         this.zoneTaps = zoneTaps;
-    }
-
-    public Double getRiskPerUnit() {
-        return riskPerUnit;
-    }
-
-    public void setRiskPerUnit(Double riskPerUnit) {
-        this.riskPerUnit = riskPerUnit;
     }
 
     public Integer getHalfLife() {
@@ -401,19 +252,92 @@ public class CandleAggregatedDataEntity {
         this.resilience = resilience;
     }
 
-    public Double getAverageHalfLife() {
-        return averageHalfLife;
+    public double getRsi14() {
+        return rsi14;
     }
 
-    public void setAverageHalfLife(Double averageHalfLife) {
-        this.averageHalfLife = averageHalfLife;
+    public void setRsi14(double rsi14) {
+        this.rsi14 = rsi14;
     }
 
-    public Double getAverageResilience() {
-        return averageResilience;
+    public String getTrade() {
+        return trade;
     }
 
-    public void setAverageResilience(Double averageResilience) {
-        this.averageResilience = averageResilience;
+    public void setTrade(String trade) {
+        this.trade = trade;
+    }
+
+
+    public double getSameDirectionMaxMove() {
+        return sameDirectionMaxMove;
+    }
+
+    public void setSameDirectionMaxMove(double sameDirectionMaxMove) {
+        this.sameDirectionMaxMove = sameDirectionMaxMove;
+    }
+
+    public double getVolatility14() {
+        return volatility14;
+    }
+
+    public void setVolatility14(double volatility14) {
+        this.volatility14 = volatility14;
+    }
+
+    public double getVolatility50() {
+        return volatility50;
+    }
+
+    public void setVolatility50(double volatility50) {
+        this.volatility50 = volatility50;
+    }
+
+    public double getVolatility200() {
+        return volatility200;
+    }
+
+    public void setVolatility200(double volatility200) {
+        this.volatility200 = volatility200;
+    }
+
+    public double getVolume14() {
+        return volume14;
+    }
+
+    public void setVolume14(double volume14) {
+        this.volume14 = volume14;
+    }
+
+    public double getVolume50() {
+        return volume50;
+    }
+
+    public void setVolume50(double volume50) {
+        this.volume50 = volume50;
+    }
+
+    public double getVolume200() {
+        return volume200;
+    }
+
+    public void setVolume200(double volume200) {
+        this.volume200 = volume200;
+    }
+
+    public double getRsi50() {
+        return rsi50;
+    }
+
+    public void setRsi50(double rsi50) {
+        this.rsi50 = rsi50;
+    }
+
+    public double getEntryPrice() {
+        return entryPrice;
+    }
+
+    public void setEntryPrice(double entryPrice) {
+        this.entryPrice = entryPrice;
     }
 }

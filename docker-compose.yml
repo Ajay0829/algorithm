@@ -47,8 +47,7 @@ services:
       
         # 3. Create the specified Kafka topics.
         #    These commands will only run if the broker is ready.
-        kafka-topics --create --topic candle-added --partitions 20 --replication-factor 1 --bootstrap-server localhost:9092 &&
-        kafka-topics --create --topic chart-annotations --partitions 1 --replication-factor 1 --bootstrap-server localhost:9092 &&
+        kafka-topics --create --topic candle-added --partitions 20 --replication-factor 1 --bootstrap-server localhost:9092
       
         # 4. Use 'wait' to keep the container running.
         #    It waits for the background Kafka process to exit.

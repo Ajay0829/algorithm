@@ -1,27 +1,23 @@
 package com.market.streamline.service;
 
 import com.market.streamline.entity.structure.CandleEntity;
-import com.market.streamline.entity.structure.MarketIndicators;
 import com.market.streamline.entity.zone.Zone;
 import com.market.streamline.repository.CandleRepository;
-import com.market.streamline.repository.MarketIndicatorsRepository;
 import com.market.streamline.repository.ZoneRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
 public class ZoneMetricsService {
     private final ZoneRepository zoneRepository;
     private final CandleRepository candleRepository;
-    private final MarketIndicatorsRepository marketIndicatorsRepository;
 
     public ZoneMetricsService(ZoneRepository zoneRepository,
-                              CandleRepository candleRepository,
-                              MarketIndicatorsRepository marketIndicatorsRepository) {
+                              CandleRepository candleRepository) {
         this.zoneRepository = zoneRepository;
         this.candleRepository = candleRepository;
-        this.marketIndicatorsRepository = marketIndicatorsRepository;
     }
 
     public void updateZoneMetrics(CandleEntity candleEntity) {
@@ -29,132 +25,129 @@ public class ZoneMetricsService {
                 candleEntity.getStockSymbol(), candleEntity.getTimeframe());
 
         for (Zone zone : zones) {
-            long candles = candleRepository.countCandlesBetweenTimestamps(
+            List<CandleEntity> futureCandles = candleRepository.getCandlesBetweenTimestamps(
                     zone.getStockSymbol(),
                     zone.getTimeframe(),
                     zone.getIdentifiedAt(),
-                    candleEntity.getCandleTimestamp());
+                    candleEntity.getCandleTimestamp()
+            );
+            if (futureCandles == null || futureCandles.isEmpty()) continue;
+            futureCandles.sort(Comparator.comparing(CandleEntity::getCandleTimestamp));
 
-            if (candles <= 0) continue;
-
-            double p0 = zone.getNearPoint();
-            double p1 = zone.getZoneType().equals("DEMAND")
-                    ? p0 + zone.getStrength() * p0 / 100.0
-                    : p0 - zone.getStrength() * p0 / 100.0;
-            double denom = Math.abs(p1 - p0);
-            if (denom == 0) denom = 1e-9;
-
-            double retracement = zone.getZoneType().equals("DEMAND") ?
-                    (p1 - candleEntity.getClose()) / denom :
-                    (candleEntity.getClose() - p1) / denom;
-
-            if (Boolean.TRUE.equals(zone.getImpulseExtending())) {
-                if (candles <= 3) {
-                    // Extend the impulse if needed till 3 candles.
-                    boolean impulseExtended = extendImpulse(zone, candleEntity, retracement);
-                    if (impulseExtended) {
-                        // Impulse not closed yet, shouldn't check for resilience and half life.
-                        zoneRepository.save(zone);
-                        return;
-                    } else {
-                        // Case where there is a retracement and it stopped the impulse.
-                        // Should start for resilience and half life
-                        candles = 1;
-                    }
-                } else {
-                    zone.setImpulseExtending(false);
-                    zoneRepository.save(zone);
-                    return;
-                }
-            }
-
-            if (candles <= 14) {
-
-                // Update resilience
-                if (retracement < 0) retracement = 0;
-                if (zone.getResilience() == null || retracement > zone.getResilience()) {
-                    zone.setResilience(retracement);
-                }
-
-
-                // Update half life
-                Integer hl = zone.getHalfLife();
-                if (hl == null || hl == -1) {
-                    double halfTarget = zone.getZoneType().equals("DEMAND") ? p1 - denom / 2 : p1 + denom / 2;
-                    boolean hit = zone.getZoneType().equals("DEMAND") ?
-                            candleEntity.getClose() <= halfTarget :
-                            candleEntity.getClose() >= halfTarget;
-                    if (hit) {
-                        zone.setHalfLife((int) candles);
-                    } else {
-                        zone.setHalfLife(-1);
-                    }
-                }
-            }
-
-            if (candles >= 14) {
-                if (zone.getHalfLife() == -1) {
-                    zone.setHalfLife(50);
-                }
-                if (zone.getResilience() == null) {
-                    zone.setResilience(0.0);
-                }
-                updateAverages(zone);
-            }
-
-            zoneRepository.save(zone);
+            MetricsResult r = computeMetrics(futureCandles, zone);
+            apply(zone, r, false);
         }
     }
 
-    public void updateAverages(Zone zone) {
-        MarketIndicators indicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(
-                zone.getStockSymbol(), zone.getTimeframe());
-        if (indicators != null) {
-            if (zone.getResilience() != null) {
-                int resSamples = indicators.getResilienceSamples();
-                double avgRes = indicators.getAverageResilience() == null ? 0.0 : indicators.getAverageResilience();
-                indicators.setAverageResilience((avgRes * resSamples + zone.getResilience()) / (resSamples + 1));
-                indicators.setResilienceSamples(resSamples + 1);
-            }
-            if (zone.getHalfLife() != null && zone.getHalfLife() > 0 && zone.getHalfLife() != 50) {
-                int hlSamples = indicators.getHalfLifeSamples();
-                double avgHL = indicators.getAverageHalfLife() == null ? 0.0 : indicators.getAverageHalfLife();
-                indicators.setAverageHalfLife((avgHL * hlSamples + zone.getHalfLife()) / (hlSamples + 1));
-                indicators.setHalfLifeSamples(hlSamples + 1);
-            }
-            marketIndicatorsRepository.save(indicators);
-        }
+    public void updateZoneMetricsWithProvisionalTouch(Zone zone, CandleEntity lastCandle, double entryPrice) {
+        List<CandleEntity> window = candleRepository.getCandlesBetweenTimestamps(
+                zone.getStockSymbol(), zone.getTimeframe(), zone.getIdentifiedAt(), lastCandle.getCandleTimestamp().minusHours(1));
+        if (window == null || window.isEmpty()) return;
+        window.sort(Comparator.comparing(CandleEntity::getCandleTimestamp));
+
+        // Build a synthetic touch candle using only what we truly know: the entry price
+        CandleEntity touch = new CandleEntity(
+                zone.getStockSymbol(),
+                zone.getTimeframe(),
+                lastCandle.getCandleTimestamp(),
+                entryPrice, entryPrice, entryPrice, entryPrice,
+                averageVolume(window)
+        );
+        window.add(touch);
+
+        MetricsResult r = computeMetrics(window, zone);
+        r.finalized = false; // provisional call should not close the impulse
+        apply(zone, r, true);
     }
 
-    private  boolean extendImpulse(Zone zone, CandleEntity candle, Double retracement) {
-        double base = zone.getFarPoint();
-
-        if (retracement >= 0.2) {
-            zone.setImpulseExtending(false);
-            zoneRepository.save(zone);
-            return false;
+    private void apply(Zone zone, MetricsResult r, boolean provisional) {
+        zone.setHalfLife(r.halfLifeBars);                 // bars (ceil of fractional)
+        zone.setResilience(r.resilience);                 // 0..1 (max retrace in 30 bars)
+        zone.setSameDirectionExtremeMovement(r.sameDirectionExtremeMovement); // >=0 (can exceed 1 if extension)
+        // Only toggle impulseExtending on non-provisional updates
+        if (!provisional) {
+            zone.setImpulseExtending(!r.finalized); // true while open, false when finalized
         }
-        if (zone.getZoneType().equals("DEMAND")) {
-            double length = (candle.getHigh() - base) * 100.0 / base;
-            if (length > zone.getStrength()) {
-                zone.setStrength(length);
-                double risk = (candle.getHigh() - base) / 3.5;
-                zone.setRiskPerUnit(risk);
-                zone.setNearPoint(base + risk);
-            }
+        zoneRepository.save(zone);
+    }
 
-            zone.setIdentifiedAt(candle.getCandleTimestamp());
-        } else {
-            double length = (base - candle.getLow()) * 100.0 / base;
-            if (length > zone.getStrength()) {
-                zone.setStrength(length);
-                double risk = (base - candle.getLow()) / 3.5;
-                zone.setRiskPerUnit(risk);
-                zone.setNearPoint(base - risk);
-            }
-            zone.setIdentifiedAt(candle.getCandleTimestamp());
+    private MetricsResult computeMetrics(List<CandleEntity> candles, Zone zone) {
+        final double EPS = 1e-9;
+
+        final boolean isDemand = "DEMAND".equalsIgnoreCase(zone.getZoneType());
+        final double farPoint = zone.getFarPoint();
+        final double impulseStrengthPct = zone.getStrength(); // % move recorded at identification
+
+        // Theoretical impulse end from the zone record (used for half-level & normalization)
+        final double impulseEnd = isDemand
+                ? farPoint + (impulseStrengthPct * farPoint / 100.0)
+                : farPoint - (impulseStrengthPct * farPoint / 100.0);
+        final double deltaImp = Math.max(Math.abs(impulseEnd - farPoint), EPS);
+
+        final int n = candles.size();
+        double[] close = new double[n];
+        for (int i = 0; i < n; i++) {
+            CandleEntity c = candles.get(i);
+            close[i] = nz(c.getClose());
         }
 
-        return true;
+        // ---------------- Half-life (CLOSE-based, no continuation): ----------------
+        // Scan from bar 1 up to bar 30 for the first close that crosses the 50% retrace level.
+        final double halfLevel = farPoint + 0.5 * (impulseEnd - farPoint);
+        int halfLifeBars = 30; // cap if never crosses within first 30 bars
+        for (int i = 1; i < n; i++) {
+            boolean crossed = isDemand ? (close[i] <= halfLevel)   // up-impulse -> retrace down
+                    : (close[i] >= halfLevel);  // down-impulse -> retrace up
+            if (crossed) { halfLifeBars = i + 1; break; }
+        }
+
+        // ---------------- Resilience (0..1): max retracement in 30 bars post impulse ----------------
+        double maxRetrace = 0.0;
+        for (int i = 1; i < n; i++) {
+            double retrace = isDemand
+                    ? (impulseEnd - close[i]) / deltaImp   // move back toward base
+                    : (close[i] - impulseEnd) / deltaImp;
+            if (!Double.isFinite(retrace)) retrace = 0.0;
+            if (retrace < 0.0) retrace = 0.0; // still extending
+            if (retrace > 1.0) retrace = 1.0; // over-retraced
+            if (retrace > maxRetrace) maxRetrace = retrace;
+        }
+        double resilience = maxRetrace; // 0..1
+
+        // ---------------- Same-direction extreme movement (CLOSE-based): ----------------
+        double extremeClose = close[0];
+        for (int i = 1; i < n; i++) {
+            extremeClose = isDemand ? Math.max(extremeClose, close[i])
+                    : Math.min(extremeClose, close[i]);
+        }
+        // Unbounded above (tracks max same-direction extension); always >= 0
+        double sameDirectionExtremeMovement = Math.max(1.0, Math.abs(extremeClose - farPoint) / deltaImp);
+
+        // ---------------- Finalization: near-point taken out or 30 bars elapsed ----------------
+        boolean baseTouched = isDemand ? (close[n - 1] <= nz(zone.getFarPoint()))
+                : (close[n - 1] >= nz(zone.getFarPoint()));
+        boolean finalized = baseTouched || n >= 30;
+
+        MetricsResult r = new MetricsResult(finalized);
+        r.halfLifeBars = halfLifeBars;
+        r.resilience = resilience;
+        r.sameDirectionExtremeMovement = sameDirectionExtremeMovement;
+        return r;
+    }
+
+    private static double nz(Double v) { return v == null ? 0.0 : v; }
+
+    private static double averageVolume(List<CandleEntity> candles) {
+        if (candles == null || candles.isEmpty()) return 0.0;
+        double s = 0.0; for (CandleEntity c : candles) s += nz(c.getVolume());
+        return s / candles.size();
+    }
+
+    private static class MetricsResult {
+        boolean finalized;
+        int halfLifeBars;
+        double resilience;               // 0..1 (max retrace within 30 bars)
+        double sameDirectionExtremeMovement; // >=0 (can exceed 1 if extension)
+        MetricsResult(boolean finalized) { this.finalized = finalized; }
     }
 }
