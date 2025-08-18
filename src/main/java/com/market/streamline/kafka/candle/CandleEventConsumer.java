@@ -6,7 +6,6 @@ import com.market.streamline.data.StockState;
 import com.market.streamline.entity.structure.CandleEntity;
 import com.market.streamline.entity.aggregation.CandleAggregatedDataEntity;
 import com.market.streamline.kafka.model.CandleEvent;
-import com.market.streamline.plot.ChartAnnotationService;
 import com.market.streamline.repository.*;
 import com.market.streamline.service.*;
 import com.market.streamline.aggregation.CandleAggregatedDataCsvExporter;
@@ -52,8 +51,6 @@ public class CandleEventConsumer {
     private CandleAggregatedDataRepository candleAggregatedDataRepository;
     @Autowired
     private CandleAggregatedDataCsvExporter csvExporter;
-    @Autowired
-    private ChartAnnotationService chartAnnotationService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Autowired
@@ -88,7 +85,6 @@ public class CandleEventConsumer {
 
                 try {
                     // Perform database operations
-                    chartAnnotationService.processCandle(candleEntity, "created");
                     processCandle(candleEntity);
 
                     StockState stockState = stockStateMap.get(stockSymbol);
@@ -118,11 +114,11 @@ public class CandleEventConsumer {
     private void processCandlePoint(CandleEntity candleEntity, boolean isHighCheck) {
         tradeSimulationService.processTrades(candleEntity, isHighCheck);
         imbalanceDetectionService.invalidateZones(candleEntity, isHighCheck);
-        liquidityService.invalidateLiquidityZones(candleEntity, isHighCheck);
+//        liquidityService.invalidateLiquidityZones(candleEntity, isHighCheck);
         tradeDetectorService.findTradeOpportunity(candleEntity, isHighCheck);
-        swingPointService.confirmSwingPointIfAny(candleEntity, isHighCheck);
-        breakOfStructureService.checkForBreakOfStructure(candleEntity, isHighCheck);
-        swingPointService.checkForSwingPoint(candleEntity, isHighCheck);
+//        swingPointService.confirmSwingPointIfAny(candleEntity, isHighCheck);
+//        breakOfStructureService.checkForBreakOfStructure(candleEntity, isHighCheck);
+//        swingPointService.checkForSwingPoint(candleEntity, isHighCheck);
     }
 
     private void processCandleClosure(CandleEntity candleEntity) {
@@ -162,7 +158,7 @@ public class CandleEventConsumer {
         String csvFilePath = csvExporter.generateFilePath(stockSymbol, "data/processed");
         csvExporter.exportToCsv(allAggregatedData, csvFilePath);
         System.out.println("Exported aggregated data for " + stockSymbol + " to: " + csvFilePath);
-        cleanUpData(stockSymbol);
+//        cleanUpData(stockSymbol);
     }
 
     private void cleanUpData(String stockSymbol) {

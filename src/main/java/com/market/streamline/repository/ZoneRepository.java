@@ -16,17 +16,8 @@ import java.util.Optional;
 @Repository
 public interface ZoneRepository extends JpaRepository<Zone, Long> {
     // Basic CRUD methods are inherited from JpaRepository
-    boolean existsByStockSymbolAndTimeframeAndCandleTimestampAndZoneType(
-            String stockSymbol, String timeframe, LocalDateTime candleTimestamp, String zoneType
-    );
-
-//    boolean existsByStrongSwingPointAndZoneType(SwingPoint strongSwingPoint, String zoneType);
-
-    Zone findTopByStockSymbolAndTimeframeAndIdentifiedAtOrderByIdDesc(String stockSymbol, String timeframe, LocalDateTime identifiedAt);
 
     @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe " +
-//            "AND (z.type = 'INVALID' OR z.type = 'VALID' OR z.type = 'ACTIVE') " +
-//            "AND z.candleTimestamp >= :oneMonthAgoTimestamp " +
             "ORDER BY z.candleTimestamp DESC LIMIT 1")
     Optional<Zone> findLatestZone(@Param("stockSymbol") String stockSymbol,
                                         @Param("timeframe") String timeframe);
@@ -70,8 +61,7 @@ public interface ZoneRepository extends JpaRepository<Zone, Long> {
                                                          @Param("oneMonthAgoTimestamp") LocalDateTime oneMonthAgoTimestamp);
 
     @Query("SELECT z FROM Zone z WHERE z.stockSymbol = :stockSymbol AND z.timeframe = :timeframe " +
-            "AND (z.halfLife IS NULL OR z.halfLife = -1 OR z.resilience IS NULL " +
-            "OR z.impulseExtending = true)")
+            "AND z.impulseExtending = true")
     List<Zone> findZonesWithMissingMetrics(@Param("stockSymbol") String stockSymbol,
                                            @Param("timeframe") String timeframe);
 

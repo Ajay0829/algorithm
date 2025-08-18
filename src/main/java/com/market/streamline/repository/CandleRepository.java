@@ -23,14 +23,7 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
             Pageable pageable
     );
 
-    long countByStockSymbolAndTimeframe(String stockSymbol, String timeframe);
-
     List<CandleEntity> findByStockSymbolAndTimeframe(String stockSymbol, String timeframe);
-
-    // Find the most recent candle before or at the given timestamp
-    CandleEntity findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanEqualOrderByCandleTimestampDesc(
-        String stockSymbol, String timeframe, LocalDateTime timestamp
-    );
 
     CandleEntity findTopByStockSymbolAndTimeframeAndCandleTimestampLessThanOrderByCandleTimestampDesc(
             String stockSymbol, String timeframe, LocalDateTime timestamp
@@ -40,32 +33,16 @@ public interface CandleRepository extends JpaRepository<CandleEntity, Long> {
         String stockSymbol, String timeframe, LocalDateTime timestamp
     );
 
-    boolean existsByStockSymbolAndTimeframe(String stockSymbol, String timeframe);
-
-    // Method needed for CSV pipeline
-    Optional<CandleEntity> findByStockSymbolAndTimeframeAndCandleTimestamp(
-        String stockSymbol, String timeframe, LocalDateTime candleTimestamp
-    );
-
-    @Query("SELECT COALESCE(SUM(c.volume), 0) FROM CandleEntity c WHERE c.stockSymbol = :stockSymbol AND c.timeframe = :timeframe AND c.candleTimestamp >= :startTimestamp AND c.candleTimestamp <= :endTimestamp")
-    Double sumVolumesBetweenTimestamps(
-        @Param("stockSymbol") String stockSymbol,
-        @Param("timeframe") String timeframe,
-        @Param("startTimestamp") LocalDateTime startTimestamp,
-        @Param("endTimestamp") LocalDateTime endTimestamp
-    );
-
-    @Query("SELECT COALESCE(MAX(c.volume), 0) FROM CandleEntity c WHERE c.stockSymbol = :stockSymbol AND c.timeframe = :timeframe AND c.candleTimestamp >= :startTimestamp AND c.candleTimestamp <= :endTimestamp")
-    Double maxVolumeBetweenTimestamps( // Changed method name to reflect its purpose
-       @Param("stockSymbol") String stockSymbol,
-       @Param("timeframe") String timeframe,
-       @Param("startTimestamp") LocalDateTime startTimestamp,
-       @Param("endTimestamp") LocalDateTime endTimestamp
-    );
-
-
     @Query("SELECT COUNT(c) FROM CandleEntity c WHERE c.stockSymbol = :stockSymbol AND c.timeframe = :timeframe AND c.candleTimestamp >= :startTimestamp AND c.candleTimestamp <= :endTimestamp")
     Long countCandlesBetweenTimestamps(
+            @Param("stockSymbol") String stockSymbol,
+            @Param("timeframe") String timeframe,
+            @Param("startTimestamp") LocalDateTime startTimestamp,
+            @Param("endTimestamp") LocalDateTime endTimestamp
+    );
+
+    @Query("SELECT c FROM CandleEntity c WHERE c.stockSymbol = :stockSymbol AND c.timeframe = :timeframe AND c.candleTimestamp >= :startTimestamp AND c.candleTimestamp <= :endTimestamp")
+    List<CandleEntity> getCandlesBetweenTimestamps(
             @Param("stockSymbol") String stockSymbol,
             @Param("timeframe") String timeframe,
             @Param("startTimestamp") LocalDateTime startTimestamp,

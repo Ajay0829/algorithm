@@ -13,13 +13,13 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+
+import static java.lang.Math.abs;
 
 @Service
 public class CandleDataAggregationService {
-
-    @Autowired
-    private SwingPointRepository swingPointRepository;
 
     @Autowired
     private BreakOfStructureRepository breakOfStructureRepository;
@@ -46,129 +46,136 @@ public class CandleDataAggregationService {
 
         CandleAggregatedDataEntity data = new CandleAggregatedDataEntity();
 
+        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
+        if (marketIndicators == null) return;
+
         // Set basic candle data
         data.setStockSymbol(stockSymbol);
         data.setTimeframe(timeframe);
         data.setCandleTimestamp(candleTimestamp);
-        data.setOpen(candle.getOpen());
-        data.setClose(candle.getClose());
-        data.setHigh(candle.getHigh());
-        data.setLow(candle.getLow());
-        data.setVolume(candle.getVolume());
 
-        // Get last swing high and low
-        setLastSwingPoints(data, stockSymbol, timeframe, candleTimestamp);
-
-        // Get supply and demand prices from zones
-        setSupplyDemandPrices(data, stockSymbol, timeframe, candleTimestamp);
+        setZoneData(data, stockSymbol, timeframe, candleTimestamp, trade, marketIndicators);
 
         // Get last liquidity sweep type
-        setLastLiquiditySweepType(data, stockSymbol, timeframe, candleTimestamp);
+//        setLiquiditySweepDirection(data, stockSymbol, timeframe);
 
         // Get BOS direction
-        setBosDirection(data, stockSymbol, timeframe, candleTimestamp);
+//        setBosDirection(data, stockSymbol, timeframe, marketIndicators);
 
         // Get buy/sell liquidity levels
-        setLiquidityLevels(data, stockSymbol, timeframe, candleTimestamp);
+//        setLiquidityLevels(data, stockSymbol, timeframe, trade, marketIndicators);
 
         // Get volatility
-        setIndicators(data, stockSymbol, timeframe, candleTimestamp);
+        setIndicators(data, marketIndicators);
 
         // Trade-related fields will be filled later
         data.setTrade(trade.getTradeType()); // Will be set during trade processing
+        data.setEntryPrice(trade.getEntryPrice());
         data.setResilience(trade.getZone().getResilience());
         data.setHalfLife(trade.getZone().getHalfLife());
-        data.setEntryPrice(trade.getEntryPrice());
         data.setTimeToReturn(trade.getTimeToReturn());
+        data.setSameDirectionMaxMove(trade.getZone().getSameDirectionExtremeMovement());
         data.setTradeResult("NA");
 
         candleAggregatedDataRepository.save(data);
     }
 
-    private void setLastSwingPoints(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
-        List<SwingPoint> swingPoints = swingPointRepository.findTop2ByStockSymbolAndTimeframeAndConfirmedTrueOrderByCandleTimestampDescIdDesc(stockSymbol, timeframe)
-                .stream().sorted(Comparator.comparing(SwingPoint::getCandleTimestamp)
-                        .thenComparing(SwingPoint::getId)).toList();
+    private void setZoneData(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp, Trade trade, MarketIndicators marketIndicators) {
+        LocalDateTime oneMonthAgoTimestamp = candleTimestamp.minusMonths(1);
+        String oppositeZoneType = Objects.equals(trade.getZone().getZoneType(), "DEMAND") ? "SUPPLY" : "DEMAND";
+        Optional<Zone> opposingZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, oppositeZoneType, candleTimestamp, oneMonthAgoTimestamp);
 
-        for (SwingPoint swingPoint : swingPoints) {
-            if (swingPoint.getSwingType().equals("HIGH")) {
-                data.setLastSwingHigh(swingPoint.getPrice());
-            } else {
-                data.setLastSwingLow(swingPoint.getPrice());
+        if (opposingZone.isPresent()) {
+            Zone zone = opposingZone.get();
+            Double price = zone.getFarPoint();
+            Double entryPrice = trade.getEntryPrice();
+            Double percentMove = (entryPrice - price)*100/entryPrice;
+            percentMove /= marketIndicators.getVolatility200();
+
+            if (Objects.equals(trade.getTradeType(), "BUY")) {
+                percentMove *= -1;
             }
+
+            data.setOpposingZoneDistance(percentMove);
+            data.setOpposingZoneVolume(zone.getVolume()/marketIndicators.getVolume200());
+            data.setOpposingZoneStrength(zone.getStrength());
+        } else {
+            data.setOpposingZoneDistance(10);
+            data.setOpposingZoneVolume(0);
+            data.setOpposingZoneStrength(0);
         }
 
+        data.setSameZoneStrength(trade.getZone().getStrength() / marketIndicators.getVolatility200());
+        data.setSameZoneVolume(trade.getZone().getVolume() / marketIndicators.getVolume200());
+        data.setZoneTaps(trade.getZone().getNoOfTaps());
+
     }
 
-    private void setSupplyDemandPrices(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
-        LocalDateTime oneMonthAgoTimestamp = candleTimestamp.minusMonths(1);
-        Optional<Zone> demandZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "DEMAND", candleTimestamp, oneMonthAgoTimestamp);
-        Optional<Zone> supplyZone = zoneRepository.findLatestZoneByTypeActiveOrValid(stockSymbol, timeframe, "SUPPLY", candleTimestamp, oneMonthAgoTimestamp);
-
-        demandZone.ifPresent(zone -> {
-            data.setDemandPrice(zone.getNearPoint());
-            data.setDemandVolume(zone.getVolume());
-            data.setDemandImpulseLength(zone.getStrength().longValue());
-            data.setZoneTaps(zone.getNoOfTaps());
-            if (zone.getRiskPerUnit() != null) data.setRiskPerUnit(zone.getRiskPerUnit());
-        });
-        supplyZone.ifPresent(zone -> {
-            data.setSupplyPrice(zone.getNearPoint());
-            data.setSupplyVolume(zone.getVolume());
-            data.setSupplyImpulseLength(zone.getStrength().longValue());
-            data.setZoneTaps(zone.getNoOfTaps());
-            if (zone.getRiskPerUnit() != null) data.setRiskPerUnit(zone.getRiskPerUnit());
-        });
-    }
-
-    private void setLastLiquiditySweepType(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setLiquiditySweepDirection(CandleAggregatedDataEntity data, String stockSymbol, String timeframe) {
         Optional<LiquiditySweep> lastLiquiditySweep = liquiditySweepRepository.findLatestByStockSymbolAndTimeframe(stockSymbol, timeframe);
         if (lastLiquiditySweep.isPresent()) {
-            data.setLastLiquiditySweepType(lastLiquiditySweep.get().getSweepType());
+            data.setLiquiditySweepDirection(lastLiquiditySweep.get().getSweepType());
         } else {
-            data.setLastLiquiditySweepType("NA");
+            data.setLiquiditySweepDirection("NA");
         }
     }
 
-    private void setBosDirection(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
+    private void setBosDirection(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, MarketIndicators marketIndicators) {
         Optional<BreakOfStructure> bos = breakOfStructureRepository.findTopByStockSymbolAndTimeframeOrderByCandleTimestampDesc(stockSymbol, timeframe);
         if (bos.isPresent()) {
             data.setBosDirection(bos.get().getDirection());
-            data.setBosVolume(bos.get().getBosVolume());
+            data.setBosVolume(bos.get().getBosVolume() / marketIndicators.getVolume200());
         } else {
             data.setBosDirection("NA");
             data.setBosVolume(0.0);
         }
     }
 
-    private void setLiquidityLevels(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
-        Optional<Liquidity> buyLiquidity = liquidityRepository.findFirstByStockSymbolAndTimeframeAndLiquidityTypeOrderByCandleTimestampDesc(
-            stockSymbol, timeframe, "BUY_SWEEP");
-        Optional<Liquidity> sellLiquidity = liquidityRepository.findFirstByStockSymbolAndTimeframeAndLiquidityTypeOrderByCandleTimestampDesc(
-            stockSymbol, timeframe, "SELL_SWEEP");
+    private void setLiquidityLevels(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, Trade trade, MarketIndicators marketIndicators) {
+        Optional<Liquidity> sameLiquidity = liquidityRepository.findFirstByStockSymbolAndTimeframeAndLiquidityTypeOrderByCandleTimestampDesc(
+            stockSymbol, timeframe, trade.getTradeType().equals("BUY") ? "BUY_SWEEP" : "SELL_SWEEP");
+        Optional<Liquidity> oppositeLiquidity = liquidityRepository.findFirstByStockSymbolAndTimeframeAndLiquidityTypeOrderByCandleTimestampDesc(
+            stockSymbol, timeframe, trade.getTradeType().equals("SELL") ? "BUY_SWEEP" : "SELL_SWEEP");
 
-        buyLiquidity.ifPresent(liquidity -> {
-            data.setBuyLiquidity(liquidity.getPrice());
-            data.setBuyLiquidityStrength(liquidity.getStrength());
-        });
-        sellLiquidity.ifPresent(liquidity -> {
-            data.setSellLiquidity(liquidity.getPrice());
-            data.setSellLiquidityStrength(liquidity.getStrength());
-        });
+        Double entryPrice = trade.getEntryPrice();
+
+        if (sameLiquidity.isPresent()) {
+            double price = sameLiquidity.get().getPrice();
+            double percMove = (entryPrice - price)*100 / entryPrice;
+
+            if (Objects.equals(sameLiquidity.get().getLiquidityType(), "SELL_SWEEP")) {
+                percMove *= -1;
+            }
+            percMove /= marketIndicators.getVolatility200();
+
+            data.setSameLiquidityDistance(percMove);
+        } else {
+            data.setSameLiquidityDistance(10.0);
+        }
+
+        if (oppositeLiquidity.isPresent()) {
+            double price = oppositeLiquidity.get().getPrice();
+            double percMove = (entryPrice - price)*100 / entryPrice;
+            percMove /= marketIndicators.getVolatility200();
+
+            if (Objects.equals(oppositeLiquidity.get().getLiquidityType(), "SELL_SWEEP")) {
+                percMove *= -1;
+            }
+
+            data.setOpposingLiquidityDistance(percMove);
+        } else {
+            data.setOpposingLiquidityDistance(10.0);
+        }
     }
 
-    private void setIndicators(CandleAggregatedDataEntity data, String stockSymbol, String timeframe, LocalDateTime candleTimestamp) {
-        MarketIndicators marketIndicators = marketIndicatorsRepository.findByStockSymbolAndTimeframe(stockSymbol, timeframe);
-        if (marketIndicators == null) {
-            data.setVolatility(0);
-            data.setRsi14(0);
-            data.setAverageVolume(0);
-            return;
-        }
-        data.setVolatility(marketIndicators.getVolatility());
+    private void setIndicators(CandleAggregatedDataEntity data, MarketIndicators marketIndicators) {
+//        data.setVolatility14(marketIndicators.getVolatility14());
+//        data.setVolatility50(marketIndicators.getVolatility50());
+        data.setVolatility200(marketIndicators.getVolatility200());
         if (marketIndicators.getRsi14() != null) data.setRsi14(marketIndicators.getRsi14());
-        data.setAverageVolume(marketIndicators.getAverageVolume());
-        if (marketIndicators.getAverageHalfLife() != null) data.setAverageHalfLife(marketIndicators.getAverageHalfLife());
-        if (marketIndicators.getAverageResilience() != null) data.setAverageResilience(marketIndicators.getAverageResilience());
+        if (marketIndicators.getRsi50() != null) data.setRsi50(marketIndicators.getRsi50());
+//        data.setVolume14(marketIndicators.getVolume14());
+//        data.setVolume50(marketIndicators.getVolume50());
+//        data.setVolume200(marketIndicators.getVolume200());
     }
 }

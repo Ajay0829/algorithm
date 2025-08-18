@@ -17,7 +17,7 @@ public class CandleAggregatedDataCsvExporter {
 
     public void exportToCsv(List<CandleAggregatedDataEntity> aggregatedDataList, String filePath) {
         try {
-            // Create directories if they don't exist
+            // Ensure parent directories exist
             File file = new File(filePath);
             File parentDir = file.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
@@ -26,93 +26,84 @@ public class CandleAggregatedDataCsvExporter {
             }
 
             try (CSVWriter writer = new CSVWriter(new FileWriter(filePath))) {
-
-                // Write header
+                // Header uses ONLY fields populated by CandleDataAggregationService
                 String[] header = {
-                    "stock_symbol",
-                    "timeframe",
-                    "candle_timestamp",
-                    "open",
-                    "close",
-                    "high",
-                    "low",
-                    "volume",
-                    "last_swing_high",
-                    "last_swing_low",
-                    "supply_price",
-                    "supply_volume",
-                    "demand_price",
-                    "demand_volume",
-                    "bos_direction",
-                    "bos_volume",
-                    "last_liquidity_sweep_type",
-                    "buy_liquidity",
-                    "buy_liquidity_strength",
-                    "sell_liquidity",
-                    "sell_liquidity_strength",
-                    "volatility",
-                    "average_volume",
-                    "rsi14",
-                    "trade",
-                    "entry_price",
-                    "trade_result",
-                    "time_to_return",
-                    "demand_impulse_length",
-                    "supply_impulse_length",
-                    "zone_taps",
-                    "risk_per_unit",
-                    "half_life",
-                    "resilience",
-                    "average_half_life",
-                    "average_resilience"
+                        "stock_symbol",
+                        "timeframe",
+                        "candle_timestamp",
+                        // BOS & Liquidity sweep
+//                        "bos_direction",
+//                        "bos_volume",
+//                        "liquidity_sweep_direction",
+                        // Zone context (same & opposing)
+//                        "same_zone_strength",
+//                        "same_zone_volume",
+//                        "zone_taps",
+//                        "opposing_zone_distance",
+//                        "opposing_zone_volume",
+//                        "opposing_zone_strength",
+                        // Liquidity distances
+//                        "same_liquidity_distance",
+//                        "opposing_liquidity_distance",
+                        // Indicators
+//                        "volatility_14",
+//                        "volatility_50",
+//                        "volatility_200",
+//                        "volume_14",
+//                        "volume_50",
+//                        "volume_200",
+//                        "rsi14",
+//                        "rsi50",
+                        // Trade context
+                        "trade",
+//                        "resilience",
+//                        "half_life",
+//                        "time_to_return",
+//                        "same_direction_max_move",
+                        "trade_result"
                 };
                 writer.writeNext(header);
 
-                // Write data rows
                 for (CandleAggregatedDataEntity data : aggregatedDataList) {
-                    String[] row = {
-                        data.getStockSymbol(),
-                        data.getTimeframe(),
-                        data.getCandleTimestamp() != null ? data.getCandleTimestamp().format(DATE_TIME_FORMATTER) : "",
-                        data.getOpen() != null ? data.getOpen().toString() : "",
-                        data.getClose() != null ? data.getClose().toString() : "",
-                        data.getHigh() != null ? data.getHigh().toString() : "",
-                        data.getLow() != null ? data.getLow().toString() : "",
-                        data.getVolume() != null ? data.getVolume().toString() : "",
-                        String.valueOf(data.getLastSwingHigh()),
-                        String.valueOf(data.getLastSwingLow()),
-                        String.valueOf(data.getSupplyPrice()),
-                        String.valueOf(data.getSupplyVolume()),
-                        String.valueOf(data.getDemandPrice()),
-                        String.valueOf(data.getDemandVolume()),
-                        data.getBosDirection(),
-                        String.valueOf(data.getBosVolume()),
-                        data.getLastLiquiditySweepType(),
-                        String.valueOf(data.getBuyLiquidity()),
-                        String.valueOf(data.getBuyLiquidityStrength()),
-                        String.valueOf(data.getSellLiquidity()),
-                        String.valueOf(data.getSellLiquidityStrength()),
-                        String.valueOf(data.getVolatility()),
-                        String.valueOf(data.getAverageVolume()),
-                        String.valueOf(data.getRsi14()),
-                        data.getTrade(),
-                        String.valueOf(data.getEntryPrice()),
-                        data.getTradeResult(),
-                        String.valueOf(data.getTimeToReturn()),
-                        String.valueOf(data.getDemandImpulseLength()),
-                        String.valueOf(data.getSupplyImpulseLength()),
-                        String.valueOf(data.getZoneTaps()),
-                        String.valueOf(data.getRiskPerUnit()),
-                        String.valueOf(data.getHalfLife()),
-                        String.valueOf(data.getResilience()),
-                        String.valueOf(data.getAverageHalfLife()),
-                        String.valueOf(data.getAverageResilience())
+                    String[] row = new String[] {
+                            s(data.getStockSymbol()),
+                            s(data.getTimeframe()),
+                            data.getCandleTimestamp() != null ? data.getCandleTimestamp().format(DATE_TIME_FORMATTER) : "",
+                            // BOS & Liquidity sweep
+//                            s(data.getBosDirection()),
+//                            n(data.getBosVolume()),
+//                            s(data.getLiquiditySweepDirection()),
+                            // Zone context
+//                            n(data.getSameZoneStrength()),
+//                            n(data.getSameZoneVolume()),
+//                            n(data.getZoneTaps()),
+//                            n(data.getOpposingZoneDistance()),
+//                            n(data.getOpposingZoneVolume()),
+//                            n(data.getOpposingZoneStrength()),
+                            // Liquidity distances
+//                            n(data.getSameLiquidityDistance()),
+//                            n(data.getOpposingLiquidityDistance()),
+                            // Indicators
+//                            n(data.getVolatility14()),
+//                            n(data.getVolatility50()),
+//                            n(data.getVolatility200()),
+//                            n(data.getVolume14()),
+//                            n(data.getVolume50()),
+//                            n(data.getVolume200()),
+//                            n(data.getRsi14()),
+//                            n(data.getRsi50()),
+                            // Trade context
+                            s(data.getTrade()),
+//                            n(data.getResilience()),
+//                            n(data.getHalfLife()),
+//                            n(data.getTimeToReturn()),
+//                            n(data.getSameDirectionMaxMove()),
+                            s(data.getTradeResult())
                     };
                     writer.writeNext(row);
                 }
 
                 System.out.println("Successfully exported " + aggregatedDataList.size() + " records to: " + filePath);
-
             } catch (IOException e) {
                 System.err.println("Error exporting aggregated data to CSV: " + e.getMessage());
                 e.printStackTrace();
@@ -125,8 +116,11 @@ public class CandleAggregatedDataCsvExporter {
 
     public String generateFilePath(String stockSymbol, String outputDirectory) {
         if (outputDirectory == null || outputDirectory.isEmpty()) {
-            outputDirectory = "data/processed";
+            outputDirectory = "data/processed_index";
         }
         return outputDirectory + "/" + stockSymbol + "_aggregated_data.csv";
     }
+
+    private static String s(String v) { return v == null ? "" : v; }
+    private static String n(Object v) { return v == null ? "" : String.valueOf(v); }
 }

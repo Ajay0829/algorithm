@@ -52,6 +52,9 @@ public class Zone {
     @Column(name = "resilience")
     private Double resilience;
 
+    @Column(name = "same_direction_move")
+    private double sameDirectionExtremeMovement;
+
     @Column(name = "impulse_extending")
     private Boolean impulseExtending;
 
@@ -72,6 +75,7 @@ public class Zone {
                 Double riskPerUnit,
                 Integer halfLife,
                 Double resilience,
+                Double sameDirectionExtremeMovement,
                 Boolean impulseExtending) {
         this.stockSymbol = stockSymbol;
         this.timeframe = timeframe;
@@ -87,6 +91,7 @@ public class Zone {
         this.riskPerUnit = riskPerUnit;
         this.halfLife = halfLife;
         this.resilience = resilience;
+        this.sameDirectionExtremeMovement = sameDirectionExtremeMovement;
         this.impulseExtending = impulseExtending;
     }
 
@@ -220,6 +225,14 @@ public class Zone {
 
     public void setImpulseExtending(Boolean impulseExtending) {
         this.impulseExtending = impulseExtending;
+    }
+
+    public double getSameDirectionExtremeMovement() {
+        return sameDirectionExtremeMovement;
+    }
+
+    public void setSameDirectionExtremeMovement(double sameDirectionExtremeMovement) {
+        this.sameDirectionExtremeMovement = sameDirectionExtremeMovement;
     }
 }
 
